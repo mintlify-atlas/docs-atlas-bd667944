@@ -1,0 +1,119 @@
+---
+title: Settings
+description: Manage project settings
+---
+
+Settings control global project configuration.
+
+## Get Settings
+
+Retrieve project settings.
+
+```bash
+GET /settings
+```
+
+**Example:**
+
+```bash
+curl "https://your-directus-instance.com/settings" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+**Response:**
+
+```json
+{
+  "data": {
+    "id": 1,
+    "project_name": "My Project",
+    "project_descriptor": "A headless CMS",
+    "project_url": "https://example.com",
+    "project_logo": "logo-uuid",
+    "public_foreground": "bg-uuid",
+    "public_background": "bg-uuid",
+    "public_note": "Welcome message",
+    "auth_login_attempts": 25,
+    "auth_password_policy": null,
+    "storage_asset_transform": "all",
+    "storage_asset_presets": [],
+    "custom_css": null,
+    "custom_aspect_ratios": []
+  }
+}
+```
+
+## Update Settings
+
+Update project settings.
+
+```bash
+PATCH /settings
+```
+
+**Request Body:**
+
+```json
+{
+  "project_name": "Updated Project Name",
+  "project_descriptor": "Updated description",
+  "auth_login_attempts": 5
+}
+```
+
+## Settings Properties
+
+<ResponseField name="project_name" type="string">
+  Project name displayed in the app
+</ResponseField>
+
+<ResponseField name="project_descriptor" type="string">
+  Project tagline
+</ResponseField>
+
+<ResponseField name="project_url" type="string">
+  Project website URL
+</ResponseField>
+
+<ResponseField name="project_logo" type="string">
+  Logo file UUID
+</ResponseField>
+
+<ResponseField name="public_foreground" type="string">
+  Public pages foreground image
+</ResponseField>
+
+<ResponseField name="public_background" type="string">
+  Public pages background image
+</ResponseField>
+
+<ResponseField name="auth_login_attempts" type="integer">
+  Failed login attempts before lockout
+</ResponseField>
+
+<ResponseField name="auth_password_policy" type="string">
+  Password requirements regex
+</ResponseField>
+
+<ResponseField name="storage_asset_transform" type="string">
+  Asset transformation permissions: `all`, `none`, `presets`
+</ResponseField>
+
+<ResponseField name="storage_asset_presets" type="array">
+  Predefined asset transformation presets
+</ResponseField>
+
+<ResponseField name="custom_css" type="string">
+  Custom CSS for the admin app
+</ResponseField>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Collections" icon="layer-group" href="/api/rest/collections">
+    Manage collections
+  </Card>
+  <Card title="Users" icon="users" href="/api/rest/users">
+    Manage users
+  </Card>
+</CardGroup>

@@ -1,0 +1,97 @@
+---
+title: Revisions
+description: Access item revision history
+---
+
+Revisions track changes made to items over time.
+
+## List Revisions
+
+Retrieve all revisions for an item.
+
+```bash
+GET /revisions
+```
+
+**Filter by collection and item:**
+
+```bash
+GET /revisions?filter[collection][_eq]=articles&filter[item][_eq]=1
+```
+
+## Get Revision
+
+Retrieve a specific revision.
+
+```bash
+GET /revisions/:id
+```
+
+**Example:**
+
+```bash
+curl "https://your-directus-instance.com/revisions/123" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+## Revision Properties
+
+<ResponseField name="id" type="integer">
+  Revision ID
+</ResponseField>
+
+<ResponseField name="collection" type="string">
+  Collection name
+</ResponseField>
+
+<ResponseField name="item" type="string">
+  Item ID
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  Item data at this revision
+</ResponseField>
+
+<ResponseField name="delta" type="object">
+  Changes made in this revision
+</ResponseField>
+
+<ResponseField name="activity" type="integer">
+  Related activity log ID
+</ResponseField>
+
+## Item Revisions
+
+Get revisions for a specific item:
+
+```bash
+GET /items/:collection/:id/revisions
+```
+
+**Example:**
+
+```bash
+curl "https://your-directus-instance.com/items/articles/1/revisions" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+## Revert to Revision
+
+To revert an item to a previous revision, update the item with the revision's data:
+
+```bash
+PATCH /items/:collection/:id
+```
+
+With the `data` from the revision as the request body.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Activity" icon="clock-rotate-left" href="/api/rest/activity">
+    View activity logs
+  </Card>
+  <Card title="Items" icon="database" href="/api/rest/items">
+    Manage items
+  </Card>
+</CardGroup>

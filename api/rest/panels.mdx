@@ -1,0 +1,127 @@
+---
+title: Panels
+description: Manage dashboard panels
+---
+
+Panels are visualization components within dashboards.
+
+## List Panels
+
+Retrieve all panels.
+
+```bash
+GET /panels
+```
+
+## Get Panel
+
+Retrieve a single panel.
+
+```bash
+GET /panels/:id
+```
+
+## Create Panel
+
+Create a new panel.
+
+```bash
+POST /panels
+```
+
+**Request Body:**
+
+```json
+{
+  "dashboard": "dashboard-uuid",
+  "name": "Total Sales",
+  "icon": "attach_money",
+  "color": "#00C897",
+  "type": "metric",
+  "position_x": 0,
+  "position_y": 0,
+  "width": 12,
+  "height": 8,
+  "options": {
+    "collection": "orders",
+    "field": "total",
+    "function": "sum"
+  }
+}
+```
+
+## Update Panel
+
+Update panel configuration.
+
+```bash
+PATCH /panels/:id
+```
+
+## Delete Panel
+
+Delete a panel.
+
+```bash
+DELETE /panels/:id
+```
+
+## Panel Types
+
+- **metric** - Single value metric
+- **line-chart** - Line chart visualization
+- **bar-chart** - Bar chart visualization
+- **list** - Item list
+- **table** - Data table
+- **time-series** - Time-based chart
+- **label** - Text label
+- **markdown** - Markdown content
+
+## Panel Properties
+
+<ResponseField name="id" type="string">
+  Panel UUID
+</ResponseField>
+
+<ResponseField name="dashboard" type="string">
+  Parent dashboard UUID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Panel name
+</ResponseField>
+
+<ResponseField name="type" type="string">
+  Panel type
+</ResponseField>
+
+<ResponseField name="position_x" type="integer">
+  Horizontal position (grid units)
+</ResponseField>
+
+<ResponseField name="position_y" type="integer">
+  Vertical position (grid units)
+</ResponseField>
+
+<ResponseField name="width" type="integer">
+  Panel width (grid units)
+</ResponseField>
+
+<ResponseField name="height" type="integer">
+  Panel height (grid units)
+</ResponseField>
+
+<ResponseField name="options" type="object">
+  Panel-specific configuration
+</ResponseField>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Dashboards" icon="dashboard" href="/api/rest/dashboards">
+    Manage dashboards
+  </Card>
+  <Card title="Insights" icon="chart-line" href="/dashboard/insights">
+    Learn about Insights
+  </Card>
+</CardGroup>

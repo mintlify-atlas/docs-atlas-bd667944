@@ -86,14 +86,19 @@
               "api/rest/items",
               "api/rest/collections",
               "api/rest/fields",
+              "api/rest/relations",
               "api/rest/files",
               "api/rest/folders",
               "api/rest/users",
               "api/rest/roles",
               "api/rest/permissions",
               "api/rest/activity",
+              "api/rest/revisions",
               "api/rest/flows",
-              "api/rest/operations"
+              "api/rest/operations",
+              "api/rest/dashboards",
+              "api/rest/panels",
+              "api/rest/settings"
             ]
           },
           {

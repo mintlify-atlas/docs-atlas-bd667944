@@ -1,0 +1,97 @@
+---
+title: Relations
+description: Manage relationships between collections
+---
+
+Relations define how collections are linked together (M2O, O2M, M2M, M2A).
+
+## List Relations
+
+Retrieve all relations.
+
+```bash
+GET /relations
+```
+
+**Example:**
+
+```bash
+curl "https://your-directus-instance.com/relations" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+## Get Relation
+
+Retrieve a single relation.
+
+```bash
+GET /relations/:collection/:field
+```
+
+## Create Relation
+
+Create a new relationship.
+
+```bash
+POST /relations
+```
+
+**Request Body (Many-to-One):**
+
+```json
+{
+  "collection": "articles",
+  "field": "author",
+  "related_collection": "users",
+  "meta": {
+    "one_field": "articles"
+  }
+}
+```
+
+**Request Body (Many-to-Many):**
+
+```json
+{
+  "collection": "articles",
+  "field": "tags",
+  "related_collection": "tags",
+  "meta": {
+    "junction_collection": "articles_tags",
+    "junction_field": "articles_id",
+    "one_collection_field": "tags_id",
+    "one_allowed_collections": null
+  }
+}
+```
+
+## Update Relation
+
+Update relation metadata.
+
+```bash
+PATCH /relations/:collection/:field
+```
+
+## Delete Relation
+
+Delete a relation.
+
+```bash
+DELETE /relations/:collection/:field
+```
+
+<Warning>
+  Deleting a relation does not delete the underlying foreign key or junction table.
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Collections" icon="layer-group" href="/api/rest/collections">
+    Manage collections
+  </Card>
+  <Card title="Fields" icon="input-text" href="/api/rest/fields">
+    Manage fields
+  </Card>
+</CardGroup>

@@ -1,0 +1,107 @@
+---
+title: Dashboards
+description: Manage Insights dashboards
+---
+
+Dashboards organize panels into customizable analytics views.
+
+## List Dashboards
+
+Retrieve all dashboards.
+
+```bash
+GET /dashboards
+```
+
+**Example:**
+
+```bash
+curl "https://your-directus-instance.com/dashboards" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+## Get Dashboard
+
+Retrieve a single dashboard with its panels.
+
+```bash
+GET /dashboards/:id
+```
+
+**Include panels:**
+
+```bash
+GET /dashboards/:id?fields=*,panels.*
+```
+
+## Create Dashboard
+
+Create a new dashboard.
+
+```bash
+POST /dashboards
+```
+
+**Request Body:**
+
+```json
+{
+  "name": "Analytics Dashboard",
+  "icon": "dashboard",
+  "color": "#6644FF",
+  "note": "Sales and performance metrics"
+}
+```
+
+## Update Dashboard
+
+Update dashboard properties.
+
+```bash
+PATCH /dashboards/:id
+```
+
+## Delete Dashboard
+
+Delete a dashboard.
+
+```bash
+DELETE /dashboards/:id
+```
+
+## Dashboard Properties
+
+<ResponseField name="id" type="string">
+  Dashboard UUID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Dashboard name
+</ResponseField>
+
+<ResponseField name="icon" type="string">
+  Material icon name
+</ResponseField>
+
+<ResponseField name="color" type="string">
+  Hex color code
+</ResponseField>
+
+<ResponseField name="note" type="string">
+  Description
+</ResponseField>
+
+<ResponseField name="panels" type="array">
+  Dashboard panels
+</ResponseField>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Panels" icon="chart-simple" href="/api/rest/panels">
+    Manage panels
+  </Card>
+  <Card title="Insights" icon="chart-line" href="/dashboard/insights">
+    Learn about Insights
+  </Card>
+</CardGroup>
