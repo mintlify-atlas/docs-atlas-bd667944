@@ -1,0 +1,306 @@
+---
+title: "Insights & Analytics"
+description: "Create custom dashboards with panels to visualize and analyze your data"
+icon: "chart-line"
+---
+
+Insights is Directus's built-in analytics module that lets you create custom dashboards with various visualization panels. Monitor metrics, track trends, and gain insights into your content without external tools.
+
+## Overview
+
+The Insights module provides:
+
+- **Custom Dashboards** - Create multiple dashboards for different purposes
+- **Visual Panels** - 12+ panel types for data visualization
+- **Real-time Data** - Panels update automatically with your latest data
+- **Flexible Layouts** - Drag-and-drop panels to arrange your dashboard
+- **Filters & Variables** - Make dashboards interactive and dynamic
+
+<Tip>
+  Insights requires read permissions on both the `directus_dashboards` and `directus_panels` collections.
+</Tip>
+
+## Accessing Insights
+
+Click the **Insights** icon in the sidebar navigation to access the Insights module.
+
+You'll see:
+- **Dashboard List** - All dashboards you have access to
+- **Create Dashboard** button - Add new dashboards
+- **Search** - Find dashboards by name
+
+## Creating a Dashboard
+
+To create your first dashboard:
+
+<Steps>
+  <Step title="Click Create Dashboard">
+    Click the **+** button in the top right of the Insights overview.
+  </Step>
+  
+  <Step title="Configure dashboard details">
+    Enter:
+    - **Name** - Dashboard title
+    - **Icon** - Icon to display (optional)
+    - **Color** - Color theme (optional)
+    - **Note** - Description or notes (optional)
+  </Step>
+  
+  <Step title="Save the dashboard">
+    Click **Save** to create your dashboard.
+  </Step>
+</Steps>
+
+You'll be taken to the empty dashboard where you can start adding panels.
+
+## Adding Panels
+
+Panels are the building blocks of your dashboards. Each panel displays a specific metric or visualization.
+
+### Create a Panel
+
+1. Open a dashboard
+2. Click **Edit** to enter edit mode
+3. Click the **+** button to add a panel
+4. Select a panel type
+5. Configure the panel options
+6. Position and resize the panel
+7. Click **Save** to save your changes
+
+### Panel Types
+
+Directus includes these built-in panel types:
+
+<AccordionGroup>
+  <Accordion title="Metric" icon="calculator">
+    Display a single numeric value with aggregate functions like count, sum, average, min, or max. Perfect for KPIs and key metrics.
+    
+    **Use cases:** Total users, revenue sum, average order value
+  </Accordion>
+  
+  <Accordion title="Label" icon="tag">
+    Show static text or markdown content. Use for titles, instructions, or notes.
+    
+    **Use cases:** Dashboard headers, explanatory text
+  </Accordion>
+  
+  <Accordion title="List" icon="list">
+    Display a list of items from a collection with customizable fields.
+    
+    **Use cases:** Recent orders, top products, latest posts
+  </Accordion>
+  
+  <Accordion title="Line Chart" icon="chart-line">
+    Visualize trends over time with a line graph.
+    
+    **Use cases:** Sales over time, user growth, page views by date
+  </Accordion>
+  
+  <Accordion title="Bar Chart" icon="chart-bar">
+    Compare values across categories with vertical or horizontal bars.
+    
+    **Use cases:** Sales by category, items by status, regional comparisons
+  </Accordion>
+  
+  <Accordion title="Pie Chart" icon="chart-pie">
+    Show proportions and percentages in a circular graph.
+    
+    **Use cases:** Market share, status distribution, category breakdown
+  </Accordion>
+  
+  <Accordion title="Metric List" icon="list-check">
+    Display multiple metrics in a list format.
+    
+    **Use cases:** Multiple KPIs, comparison metrics
+  </Accordion>
+  
+  <Accordion title="Time Series" icon="chart-area">
+    Advanced time-based visualizations with multiple data series.
+    
+    **Use cases:** Complex trend analysis, multi-metric comparisons
+  </Accordion>
+  
+  <Accordion title="Meter" icon="gauge">
+    Display progress toward a goal with a gauge visualization.
+    
+    **Use cases:** Goal tracking, completion percentages, capacity meters
+  </Accordion>
+</AccordionGroup>
+
+## Configuring Panels
+
+When creating or editing a panel, you'll configure:
+
+### Data Source
+
+- **Collection** - Choose which collection to query
+- **Field** - Select the field to aggregate or display
+- **Function** - Choose aggregate function (count, sum, avg, min, max, first, last)
+- **Filter** - Apply filters to limit which items are included
+- **Sort Field** - For first/last functions, specify sorting
+
+### Style & Format
+
+Customize how your data appears:
+
+- **Prefix/Suffix** - Add symbols like $ or %
+- **Number Style** - Decimal, currency, percent, or unit
+- **Notation** - Standard, scientific, engineering, or compact
+- **Decimals** - Set minimum and maximum decimal places
+- **Conditional Formatting** - Change color based on value thresholds
+- **Text Alignment** - Start, center, end, or justify
+- **Font Style** - Weight, style, size, and family
+
+### Panel Header
+
+- **Show Header** - Toggle panel header visibility
+- **Name** - Panel title
+- **Icon** - Panel icon
+- **Color** - Panel accent color
+- **Note** - Description shown in header
+
+## Editing Dashboards
+
+To modify an existing dashboard:
+
+1. Open the dashboard
+2. Click **Edit** in the top right to enter edit mode
+3. Make your changes:
+   - **Add panels** - Click the + button
+   - **Edit panels** - Click a panel to modify settings
+   - **Move panels** - Drag panels to reposition
+   - **Resize panels** - Drag panel corners to resize
+   - **Delete panels** - Click the trash icon
+   - **Duplicate panels** - Click the copy icon
+4. Click **Save** to save your changes
+
+<Warning>
+  All panel changes are saved together. Click **Save** before leaving edit mode or changes will be lost.
+</Warning>
+
+## Dashboard Options
+
+Click the menu icon (three dots) on a dashboard for these actions:
+
+- **Edit Dashboard** - Change name, icon, color, or notes
+- **Duplicate Dashboard** - Create a copy with all panels
+- **Export Dashboard** - Download dashboard and panel configuration as JSON
+- **Delete Dashboard** - Permanently remove the dashboard
+
+## Viewing Mode
+
+When not in edit mode, dashboards have special viewing features:
+
+### Zoom to Fit
+
+Click the **Fit to Screen** button to automatically scale the dashboard to fit your screen size. Perfect for displaying dashboards on monitors or TVs.
+
+### Auto Refresh
+
+Set up automatic dashboard refreshing:
+
+1. Open the sidebar detail panel
+2. Click **Refresh Interval**
+3. Choose interval (10s, 30s, 1m, 5m, 15m, 30m, 1h)
+4. Dashboard data will refresh automatically
+
+<Tip>
+  Auto refresh is perfect for dashboards displayed on office monitors or status boards.
+</Tip>
+
+### Manual Refresh
+
+Click the refresh icon in the sidebar to manually reload all panel data.
+
+## Variables and Filters
+
+Make dashboards interactive with variables:
+
+### Relational Variables
+
+Create dropdown filters that update multiple panels:
+
+1. Add a **Relational Variable** panel
+2. Select a collection and field
+3. Use the variable in other panel filters with `{{variable_name}}`
+4. Users can select values to filter the entire dashboard
+
+**Example:** Add a "Select Store" variable to filter all sales metrics by store location.
+
+### Variable Panel
+
+Create custom input fields for filtering:
+
+1. Add a **Variable** panel
+2. Configure the variable name and default value
+3. Reference it in other panels with `{{variable_name}}`
+
+## Sharing Dashboards
+
+### Permissions
+
+Dashboards respect user permissions:
+- Users can only see dashboards they have read permission for
+- Panel data only shows items the user can access
+- Admin users have full access to all dashboards
+
+### Export & Import
+
+**Export a dashboard:**
+1. Click the dashboard menu
+2. Select **Export**
+3. Save the JSON file
+
+**Import a dashboard:**
+1. Go to the Insights overview
+2. Open the sidebar import panel
+3. Upload the JSON file
+4. Review and confirm the import
+
+<Note>
+  Exported dashboards include all panel configurations but not the actual data.
+</Note>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Organize dashboards by audience">
+    Create separate dashboards for different teams or purposes:
+    - Executive dashboard with high-level KPIs
+    - Content team dashboard with publishing metrics
+    - Sales dashboard with revenue and conversion data
+  </Accordion>
+  
+  <Accordion title="Use clear naming conventions">
+    Name panels and dashboards descriptively:
+    - "Monthly Revenue" not "Metric 1"
+    - "Top 10 Products" not "Product List"
+    - "User Growth Dashboard" not "Dashboard 3"
+  </Accordion>
+  
+  <Accordion title="Keep dashboards focused">
+    Don't overcrowd dashboards with too many panels:
+    - Focus on 4-8 key metrics per dashboard
+    - Group related metrics together
+    - Create multiple dashboards instead of one large one
+  </Accordion>
+  
+  <Accordion title="Use conditional formatting">
+    Make metrics easier to interpret with color:
+    - Green for positive/good values
+    - Red for negative/bad values
+    - Yellow/orange for warning thresholds
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Dashboard Settings" icon="gear" href="/dashboard/settings">
+    Learn about configuring permissions and access control.
+  </Card>
+  
+  <Card title="Content Module" icon="box" href="/dashboard/content-module">
+    Manage the data that powers your dashboards.
+  </Card>
+</CardGroup>

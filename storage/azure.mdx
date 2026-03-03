@@ -1,0 +1,275 @@
+---
+title: Azure Storage
+description: Configure Azure Blob Storage in Directus for enterprise-grade cloud file storage.
+---
+
+The Azure storage driver integrates with Azure Blob Storage, Microsoft's object storage solution for the cloud. It provides highly available, secure, and scalable storage with global distribution capabilities.
+
+## Installation
+
+The Azure driver is included by default with Directus via the `@directus/storage-driver-azure` package, which uses the Azure Storage SDK.
+
+## Configuration
+
+Configure Azure storage using environment variables:
+
+```bash
+# Define storage location
+STORAGE_LOCATIONS="azure"
+
+# Configure Azure driver
+STORAGE_AZURE_DRIVER="azure"
+STORAGE_AZURE_CONTAINER_NAME="directus-files"
+STORAGE_AZURE_ACCOUNT_NAME="mystorageaccount"
+STORAGE_AZURE_ACCOUNT_KEY="your-account-key"
+```
+
+### Configuration Options
+
+<ParamField path="containerName" type="string" required>
+  The Azure Blob Storage container name where files will be stored.
+</ParamField>
+
+<ParamField path="accountName" type="string" required>
+  The Azure Storage account name.
+</ParamField>
+
+<ParamField path="accountKey" type="string" required>
+  The Azure Storage account access key.
+</ParamField>
+
+<ParamField path="root" type="string">
+  Optional path prefix for all files within the container.
+</ParamField>
+
+<ParamField path="endpoint" type="string">
+  Custom endpoint URL. Default: `https://{accountName}.blob.core.windows.net`.
+</ParamField>
+
+<ParamField path="tus.enabled" type="boolean">
+  Enable TUS resumable uploads. Default: `false`.
+</ParamField>
+
+<ParamField path="tus.chunkSize" type="number">
+  Chunk size for resumable uploads in bytes. Maximum: `104857600` (100 MiB). Only used when TUS is enabled.
+</ParamField>
+
+## Examples
+
+### Basic Configuration
+
+```bash
+STORAGE_LOCATIONS="azure"
+STORAGE_AZURE_DRIVER="azure"
+STORAGE_AZURE_CONTAINER_NAME="directus-files"
+STORAGE_AZURE_ACCOUNT_NAME="mystorageaccount"
+STORAGE_AZURE_ACCOUNT_KEY="abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890+/=="
+```
+
+### With Root Path
+
+```bash
+STORAGE_LOCATIONS="azure"
+STORAGE_AZURE_DRIVER="azure"
+STORAGE_AZURE_CONTAINER_NAME="shared-container"
+STORAGE_AZURE_ACCOUNT_NAME="mystorageaccount"
+STORAGE_AZURE_ACCOUNT_KEY="your-account-key"
+STORAGE_AZURE_ROOT="directus/production"
+```
+
+### Custom Endpoint
+
+```bash
+# For Azure Government or China
+STORAGE_LOCATIONS="azure"
+STORAGE_AZURE_DRIVER="azure"
+STORAGE_AZURE_CONTAINER_NAME="directus-files"
+STORAGE_AZURE_ACCOUNT_NAME="mystorageaccount"
+STORAGE_AZURE_ACCOUNT_KEY="your-account-key"
+STORAGE_AZURE_ENDPOINT="https://mystorageaccount.blob.core.usgovcloudapi.net"
+```
+
+### With Resumable Uploads
+
+```bash
+STORAGE_LOCATIONS="azure"
+STORAGE_AZURE_DRIVER="azure"
+STORAGE_AZURE_CONTAINER_NAME="directus-files"
+STORAGE_AZURE_ACCOUNT_NAME="mystorageaccount"
+STORAGE_AZURE_ACCOUNT_KEY="your-account-key"
+STORAGE_AZURE_TUS__ENABLED="true"
+STORAGE_AZURE_TUS__CHUNK_SIZE="52428800"  # 50 MiB
+```
+
+## Features
+
+### Resumable Uploads
+
+The Azure driver supports TUS resumable uploads using Azure Append Blobs from `/packages/storage-driver-azure/src/index.ts:23-151`:
+- Uses Azure Append Blob for chunked uploads
+- Maximum chunk size: 100 MiB (enforced)
+- Resume interrupted uploads
+- Automatic chunk accumulation
+
+### Blob Types
+
+The driver uses different blob types for different operations:
+- **Block Blobs** - Standard uploads and file storage
+- **Append Blobs** - Resumable TUS uploads
+
+### Copy Operations
+
+Azure native copy operations from `/packages/storage-driver-azure/src/index.ts:93-99`:
+- Server-side copy without data transfer
+- Asynchronous operation with polling
+- No bandwidth usage for copying
+
+## Implementation Details
+
+The Azure driver (`DriverAzure` class) from `/packages/storage-driver-azure/src/index.ts:23-151`:
+
+- Maximum chunk size validation: 100 MiB from `/packages/storage-driver-azure/src/index.ts:9`
+- Uses `StorageSharedKeyCredential` for authentication
+- Supports custom endpoints for government and sovereign clouds
+- Implements efficient streaming for large files
+
+## Best Practices
+
+### Access Keys
+
+Securely store your access keys:
+
+```bash
+# Use environment variables or secrets management
+export STORAGE_AZURE_ACCOUNT_KEY="$(cat /path/to/key)"
+```
+
+Rotate access keys regularly from the Azure Portal.
+
+### Container Configuration
+
+Create the container before using it:
+
+```bash
+# Using Azure CLI
+az storage container create \
+  --name directus-files \
+  --account-name mystorageaccount \
+  --account-key your-account-key
+```
+
+### Access Tiers
+
+Configure blob access tier for cost optimization:
+- **Hot** - Frequently accessed files
+- **Cool** - Infrequently accessed files (30+ days)
+- **Archive** - Rarely accessed files (180+ days)
+
+### CORS Configuration
+
+If accessing files directly from browsers:
+
+```bash
+az storage cors add \
+  --services b \
+  --methods GET PUT POST DELETE HEAD OPTIONS \
+  --origins "https://your-directus-instance.com" \
+  --allowed-headers "*" \
+  --exposed-headers "*" \
+  --max-age 3600 \
+  --account-name mystorageaccount
+```
+
+### Lifecycle Management
+
+Configure lifecycle policies to automatically transition or delete blobs:
+
+```json
+{
+  "rules": [
+    {
+      "enabled": true,
+      "name": "move-to-cool",
+      "type": "Lifecycle",
+      "definition": {
+        "filters": {
+          "blobTypes": ["blockBlob"]
+        },
+        "actions": {
+          "baseBlob": {
+            "tierToCool": {
+              "daysAfterModificationGreaterThan": 30
+            }
+          }
+        }
+      }
+    }
+  ]
+}
+```
+
+### Authentication Alternatives
+
+Consider using Azure Active Directory (Managed Identity) for enhanced security:
+
+1. Enable Managed Identity on your Azure App Service
+2. Grant "Storage Blob Data Contributor" role to the managed identity
+3. Use `DefaultAzureCredential` in custom implementations
+
+Note: The current driver uses account key authentication. For Managed Identity support, you would need to extend the driver.
+
+### Performance Optimization
+
+- Use Azure CDN for frequently accessed files
+- Enable Azure Storage Analytics for monitoring
+- Consider Azure Premium Storage for high IOPS requirements
+- Use zone-redundant storage (ZRS) or geo-redundant storage (GRS) based on availability needs
+
+### Networking
+
+Configure network rules for enhanced security:
+
+```bash
+# Restrict access to specific IP ranges
+az storage account network-rule add \
+  --account-name mystorageaccount \
+  --ip-address 203.0.113.10
+```
+
+## Troubleshooting
+
+### Authentication Errors
+
+1. Verify account name and key are correct
+2. Check if the storage account exists
+3. Ensure the account key has not been rotated
+4. Verify network access rules
+
+### Container Not Found
+
+Ensure the container exists:
+
+```bash
+az storage container show \
+  --name directus-files \
+  --account-name mystorageaccount
+```
+
+### Chunk Size Errors
+
+If you see "Invalid chunkSize provided" error:
+- Maximum chunk size is 100 MiB (104857600 bytes)
+- Reduce `STORAGE_AZURE_TUS__CHUNK_SIZE` value
+
+### Connection Issues
+
+1. Verify endpoint URL is correct
+2. Check firewall and network security group rules
+3. Ensure the storage account is not behind a VNet without proper access
+4. Test connectivity: `curl https://{accountName}.blob.core.windows.net`
+
+## Related
+
+- [Storage Overview](/storage/overview)
+- [S3 Storage](/storage/s3)
+- [Google Cloud Storage](/storage/gcs)

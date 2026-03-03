@@ -1,0 +1,115 @@
+---
+title: Flows
+description: Manage automation flows
+---
+
+Flows enable custom, event-driven data processing and task automation.
+
+## List Flows
+
+```bash
+GET /flows
+```
+
+**Example:**
+
+```bash
+curl "https://your-directus-instance.com/flows" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+## Get Flow
+
+```bash
+GET /flows/:id
+```
+
+## Create Flow
+
+```bash
+POST /flows
+```
+
+**Request Body:**
+
+```json
+{
+  "name": "Send Welcome Email",
+  "icon": "email",
+  "color": "#6644FF",
+  "status": "active",
+  "trigger": "event",
+  "options": {
+    "type": "action",
+    "scope": ["items.create"],
+    "collections": ["users"]
+  }
+}
+```
+
+## Update Flow
+
+```bash
+PATCH /flows/:id
+```
+
+## Delete Flow
+
+```bash
+DELETE /flows/:id
+```
+
+## Trigger Flow
+
+Manually trigger a webhook flow:
+
+```bash
+POST /flows/trigger/:id
+GET /flows/trigger/:id
+```
+
+**Example:**
+
+```bash
+curl -X POST "https://your-directus-instance.com/flows/trigger/flow-uuid" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "data": {
+      "name": "John"
+    }
+  }'
+```
+
+## Flow Properties
+
+<ResponseField name="id" type="string">
+  Flow UUID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Flow name
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  `active` or `inactive`
+</ResponseField>
+
+<ResponseField name="trigger" type="string">
+  Trigger type: `event`, `webhook`, `schedule`, `manual`, `operation`
+</ResponseField>
+
+<ResponseField name="options" type="object">
+  Trigger-specific configuration
+</ResponseField>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Operations" icon="diagram-project" href="/api/rest/operations">
+    Manage flow operations
+  </Card>
+  <Card title="Flow Automation" icon="bolt" href="/features/flows-automation">
+    Learn about flows
+  </Card>
+</CardGroup>

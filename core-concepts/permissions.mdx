@@ -1,0 +1,436 @@
+---
+title: Permissions
+description: Permissions control who can access what data and perform which actions in Directus, providing granular access control through policies, roles, and rules.
+---
+
+## What are Permissions?
+
+Permissions define access control rules that determine which users can perform specific actions on collections and items. The permission system in Directus operates through policies that are assigned to roles, with each permission rule specifying allowed actions, fields, and conditional filters.
+
+<Note>
+Directus uses a policy-based permission system where permissions are grouped into policies, which are then assigned to roles. Users inherit permissions from their roles.
+</Note>
+
+## Permission Structure
+
+A permission defines a single access rule:
+
+```typescript
+// From ~/workspace/source/packages/types/src/permissions.ts:6-16
+type Permission = {
+  id?: number;
+  policy: string | null;           // Policy this permission belongs to
+  collection: string;               // Target collection
+  action: PermissionsAction;        // Action type (create, read, update, delete, share)
+  permissions: Filter | null;       // Filter rules for conditional access
+  validation: Filter | null;        // Validation rules for data integrity
+  presets: Record<string, any> | null;  // Auto-applied field values
+  fields: string[] | null;          // Allowed fields (null = all)
+}
+```
+
+### Permission Actions
+
+From `@directus/constants`, supported actions are:
+
+- **`create`** - Create new items
+- **`read`** - Read/view items
+- **`update`** - Modify existing items
+- **`delete`** - Remove items
+- **`share`** - Share items (app-specific)
+
+### Fields Access
+
+The `fields` array controls field-level access:
+
+```json
+{
+  "fields": ["*"]  // All fields
+}
+
+{
+  "fields": ["id", "title", "content", "status"]  // Specific fields only
+}
+
+{
+  "fields": null  // No fields accessible (effectively no access)
+}
+```
+
+## How Permissions Work
+
+### Permission Evaluation
+
+When a user attempts an action, Directus:
+
+1. Retrieves the user's role(s)
+2. Fetches all policies assigned to those roles
+3. Collects permissions from all policies
+4. Evaluates permissions for the requested action and collection
+5. Applies filters and field restrictions
+6. Returns accessible data
+
+From the source code (`~/workspace/source/api/src/services/permissions.ts:88-97`):
+
+```typescript
+async getItemPermissions(collection: string, primaryKey?: string): Promise<ItemPermissions> {
+  if (!this.accountability?.user) throw new ForbiddenError();
+  
+  if (this.accountability?.admin) {
+    return {
+      update: { access: true },
+      delete: { access: true },
+      share: { access: true },
+    };
+  }
+  // ... permission evaluation logic
+}
+```
+
+### Admin Users
+
+<Info>
+Users with `admin: true` in their accountability bypass all permission checks and have unrestricted access.
+</Info>
+
+## Conditional Permissions
+
+The `permissions` field uses filter syntax to conditionally grant access:
+
+### Example: User's Own Items Only
+
+```json
+{
+  "collection": "articles",
+  "action": "read",
+  "permissions": {
+    "user_created": {
+      "_eq": "$CURRENT_USER"
+    }
+  }
+}
+```
+
+### Example: Published Items Only
+
+```json
+{
+  "collection": "articles",
+  "action": "read",
+  "permissions": {
+    "status": {
+      "_eq": "published"
+    }
+  }
+}
+```
+
+### Example: Multiple Conditions
+
+```json
+{
+  "collection": "articles",
+  "action": "update",
+  "permissions": {
+    "_and": [
+      {
+        "user_created": {
+          "_eq": "$CURRENT_USER"
+        }
+      },
+      {
+        "status": {
+          "_in": ["draft", "in_review"]
+        }
+      }
+    ]
+  }
+}
+```
+
+### Dynamic Variables
+
+Permissions support dynamic variables:
+
+- `$CURRENT_USER` - Current user's ID
+- `$CURRENT_ROLE` - Current user's role ID
+- `$NOW` - Current timestamp
+- `$CURRENT_POLICIES` - Current user's policy IDs
+
+## Validation Rules
+
+The `validation` field enforces data integrity during create/update:
+
+```json
+{
+  "collection": "articles",
+  "action": "create",
+  "validation": {
+    "status": {
+      "_in": ["draft", "in_review"]
+    }
+  }
+}
+```
+
+This ensures new articles can only be created with specific status values.
+
+## Presets
+
+Presets automatically apply field values:
+
+```json
+{
+  "collection": "articles",
+  "action": "create",
+  "presets": {
+    "author": "$CURRENT_USER",
+    "status": "draft",
+    "department": "$CURRENT_USER.department"
+  }
+}
+```
+
+Presets are applied automatically and cannot be overridden by the user.
+
+## Creating Permissions
+
+```http
+POST /permissions
+Content-Type: application/json
+
+{
+  "policy": "editor-policy",
+  "collection": "articles",
+  "action": "read",
+  "fields": ["*"],
+  "permissions": {
+    "status": {
+      "_in": ["published", "draft"]
+    }
+  }
+}
+```
+
+From the source code (`~/workspace/source/api/src/services/permissions.ts:40-46`), creating a permission:
+
+1. Validates the permission structure
+2. Saves to `directus_permissions` collection
+3. Clears system cache to apply changes immediately
+
+## App Minimal Permissions
+
+From the source code (`~/workspace/source/api/src/services/permissions.ts:34-38`), Directus automatically adds minimal permissions for the app to function:
+
+```typescript
+override async readByQuery(query: Query, opts?: QueryOptions): Promise<Partial<Item>[]> {
+  const result = (await super.readByQuery(query, opts)) as Permission[];
+  
+  return withAppMinimalPermissions(this.accountability, result, query.filter);
+}
+```
+
+This ensures authenticated users can always access necessary system collections.
+
+## Policies and Roles
+
+Permissions are organized through policies:
+
+```
+User → Role → Policies → Permissions
+```
+
+1. **User** has a **Role**
+2. **Role** has multiple **Policies** (via `directus_access`)
+3. **Policies** contain **Permissions**
+
+This three-tier system allows:
+- Reusable permission sets (policies)
+- Multiple policies per role
+- Flexible permission combinations
+
+### Example Structure
+
+```json
+// Policy
+{
+  "id": "editor-policy",
+  "name": "Editor Policy",
+  "icon": "edit"
+}
+
+// Access (links role to policy)
+{
+  "id": 1,
+  "role": "editor-role",
+  "policy": "editor-policy"
+}
+
+// Permissions within policy
+[
+  {
+    "policy": "editor-policy",
+    "collection": "articles",
+    "action": "read",
+    "fields": ["*"]
+  },
+  {
+    "policy": "editor-policy",
+    "collection": "articles",
+    "action": "create",
+    "fields": ["*"],
+    "presets": { "status": "draft" }
+  }
+]
+```
+
+## Public Role
+
+The public role grants access to unauthenticated requests:
+
+```json
+{
+  "policy": "public-policy",
+  "collection": "articles",
+  "action": "read",
+  "permissions": {
+    "status": {
+      "_eq": "published"
+    }
+  },
+  "fields": ["id", "title", "content", "published_date"]
+}
+```
+
+This allows public read access to published articles without authentication.
+
+## System Permissions
+
+<Warning>
+System collections (`directus_*`) have special permission requirements. Modifying system permissions incorrectly can break platform functionality.
+</Warning>
+
+Key system collections:
+
+- **directus_users** - Requires special handling for password fields
+- **directus_roles** - Should only be accessible to admins
+- **directus_permissions** - Manages access control itself
+- **directus_files** - Controls asset access
+
+## Permission Patterns
+
+### Read-Only Access
+
+```json
+{
+  "collection": "articles",
+  "action": "read",
+  "fields": ["*"],
+  "permissions": {}
+}
+```
+
+### Full CRUD for Own Items
+
+```json
+[
+  {
+    "action": "create",
+    "fields": ["*"],
+    "presets": { "user_created": "$CURRENT_USER" }
+  },
+  {
+    "action": "read",
+    "permissions": { "user_created": { "_eq": "$CURRENT_USER" } }
+  },
+  {
+    "action": "update",
+    "permissions": { "user_created": { "_eq": "$CURRENT_USER" } }
+  },
+  {
+    "action": "delete",
+    "permissions": { "user_created": { "_eq": "$CURRENT_USER" } }
+  }
+]
+```
+
+### Department-Based Access
+
+```json
+{
+  "action": "read",
+  "permissions": {
+    "department": {
+      "_eq": "$CURRENT_USER.department"
+    }
+  }
+}
+```
+
+### Time-Based Access
+
+```json
+{
+  "action": "read",
+  "permissions": {
+    "publish_date": {
+      "_lte": "$NOW"
+    },
+    "expire_date": {
+      "_gte": "$NOW"
+    }
+  }
+}
+```
+
+## Common Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Content Workflow" icon="diagram-project">
+    Define permissions for draft, review, and published states with role-based approval processes.
+  </Card>
+  
+  <Card title="Multi-Tenant Systems" icon="building">
+    Isolate data by organization or client using conditional permissions on tenant ID fields.
+  </Card>
+  
+  <Card title="Public API" icon="globe">
+    Expose read-only access to published content for public consumption without authentication.
+  </Card>
+  
+  <Card title="Team Collaboration" icon="users">
+    Grant department or team-based access to shared resources while maintaining data isolation.
+  </Card>
+</CardGroup>
+
+## Best Practices
+
+<Tip>
+**Principle of Least Privilege**: Grant only the minimum permissions necessary for each role.
+</Tip>
+
+<Tip>
+**Use Policies Wisely**: Create reusable policies for common permission sets to simplify management.
+</Tip>
+
+<Tip>
+**Test Permissions**: Always test permissions as different roles to ensure correct access control.
+</Tip>
+
+<Tip>
+**Leverage Presets**: Use presets to enforce data ownership and automatic field population.
+</Tip>
+
+<Tip>
+**Document Custom Filters**: Complex permission filters should be documented for future maintenance.
+</Tip>
+
+<Tip>
+**Cache Clearing**: After permission changes, clear the cache to ensure updates take effect immediately.
+</Tip>
+
+## Related Concepts
+
+- **[Users & Roles](/core-concepts/users-roles)** - Users and roles that permissions are assigned to
+- **[Collections](/core-concepts/collections)** - Target collections for permission rules
+- **[Items](/core-concepts/items)** - Data subject to permission filtering

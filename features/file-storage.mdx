@@ -1,0 +1,384 @@
+---
+title: File Storage & Assets
+description: Store and manage files with Directus's flexible storage system supporting multiple cloud providers and local storage.
+---
+
+Directus provides a powerful file storage abstraction that works with local filesystems and cloud storage providers, offering features like on-the-fly image transformations, chunked uploads, and comprehensive metadata management.
+
+## Storage Architecture
+
+Directus uses a driver-based storage system that abstracts file operations across different storage backends.
+
+### Storage Manager
+
+The `StorageManager` class coordinates storage drivers and locations:
+
+```typescript
+import { StorageManager } from '@directus/storage';
+
+const storage = new StorageManager();
+
+// Register a driver
+storage.registerDriver('s3', S3Driver);
+
+// Configure a storage location
+storage.registerLocation('production', {
+  driver: 's3',
+  options: {
+    bucket: 'my-bucket',
+    region: 'us-east-1',
+    credentials: {
+      accessKeyId: process.env.S3_KEY,
+      secretAccessKey: process.env.S3_SECRET
+    }
+  }
+});
+
+// Use the location
+const driver = storage.location('production');
+```
+
+## Supported Storage Drivers
+
+Directus supports multiple storage backends out of the box:
+
+### Local Storage
+
+Store files on the server filesystem:
+
+```bash
+# Environment Configuration
+STORAGE_LOCATIONS="local"
+STORAGE_LOCAL_DRIVER="local"
+STORAGE_LOCAL_ROOT="./uploads"
+```
+
+### Amazon S3
+
+Store files in AWS S3 or S3-compatible services:
+
+```bash
+STORAGE_LOCATIONS="s3"
+STORAGE_S3_DRIVER="s3"
+STORAGE_S3_BUCKET="my-bucket"
+STORAGE_S3_REGION="us-east-1"
+STORAGE_S3_KEY="your-access-key"
+STORAGE_S3_SECRET="your-secret-key"
+```
+
+### Google Cloud Storage
+
+Integrate with GCS:
+
+```bash
+STORAGE_LOCATIONS="gcs"
+STORAGE_GCS_DRIVER="gcs"
+STORAGE_GCS_BUCKET="my-bucket"
+STORAGE_GCS_KEY_FILENAME="/path/to/service-account.json"
+```
+
+### Azure Blob Storage
+
+Use Microsoft Azure:
+
+```bash
+STORAGE_LOCATIONS="azure"
+STORAGE_AZURE_DRIVER="azure"
+STORAGE_AZURE_CONTAINER_NAME="my-container"
+STORAGE_AZURE_ACCOUNT_NAME="account-name"
+STORAGE_AZURE_ACCOUNT_KEY="account-key"
+```
+
+### Cloudinary
+
+Leverage Cloudinary's media management:
+
+```bash
+STORAGE_LOCATIONS="cloudinary"
+STORAGE_CLOUDINARY_DRIVER="cloudinary"
+STORAGE_CLOUDINARY_CLOUD_NAME="cloud-name"
+STORAGE_CLOUDINARY_API_KEY="api-key"
+STORAGE_CLOUDINARY_API_SECRET="api-secret"
+```
+
+### Supabase Storage
+
+```bash
+STORAGE_LOCATIONS="supabase"
+STORAGE_SUPABASE_DRIVER="supabase"
+STORAGE_SUPABASE_SERVICE_ROLE="service-role-key"
+STORAGE_SUPABASE_PROJECT_URL="https://project.supabase.co"
+STORAGE_SUPABASE_BUCKET="bucket-name"
+```
+
+## Driver Operations
+
+All storage drivers implement a consistent interface:
+
+### Reading Files
+
+```typescript
+import { Readable } from 'node:stream';
+
+// Read a file as a stream
+const stream: Readable = await driver.read('path/to/file.jpg');
+
+// Read with range (partial content)
+const partialStream = await driver.read('large-file.mp4', {
+  range: { start: 0, end: 1024 }
+});
+```
+
+### Writing Files
+
+```typescript
+import { createReadStream } from 'node:fs';
+
+const fileStream = createReadStream('./local-file.jpg');
+
+await driver.write('uploads/file.jpg', fileStream, 'image/jpeg');
+```
+
+### File Operations
+
+```typescript
+// Check if file exists
+const exists = await driver.exists('path/to/file.jpg');
+
+// Get file metadata
+const stat = await driver.stat('path/to/file.jpg');
+// Returns: { size: number, modified: Date }
+
+// Move file
+await driver.move('old/path.jpg', 'new/path.jpg');
+
+// Copy file
+await driver.copy('source.jpg', 'destination.jpg');
+
+// Delete file
+await driver.delete('path/to/file.jpg');
+
+// List files with prefix
+for await (const filepath of driver.list('uploads/2026/')) {
+  console.log(filepath);
+}
+```
+
+## Chunked Uploads (TUS Protocol)
+
+Directus supports resumable uploads via the TUS protocol for large files:
+
+```typescript
+import { supportsTus } from '@directus/storage';
+
+if (supportsTus(driver)) {
+  // Create chunked upload
+  const context = await driver.createChunkedUpload('large-video.mp4', {
+    id: 'upload-id',
+    size: 5368709120, // 5GB
+    metadata: { filename: 'large-video.mp4', filetype: 'video/mp4' }
+  });
+
+  // Write chunks
+  const chunkStream = getChunkStream();
+  const bytesWritten = await driver.writeChunk(
+    'large-video.mp4',
+    chunkStream,
+    0, // offset
+    context
+  );
+
+  // Finish upload
+  await driver.finishChunkedUpload('large-video.mp4', context);
+}
+```
+
+## File Upload API
+
+Upload files via the REST API:
+
+```typescript
+import { createDirectus, rest, uploadFiles } from '@directus/sdk';
+
+const client = createDirectus('https://your-project.directus.app').with(rest());
+
+// Upload single file
+const formData = new FormData();
+formData.append('file', fileBlob, 'image.jpg');
+formData.append('folder', 'folder-uuid');
+formData.append('title', 'My Image');
+formData.append('storage', 's3'); // Optional: specify storage location
+
+const uploadedFile = await client.request(uploadFiles(formData));
+```
+
+### Multipart Upload
+
+```bash
+curl -X POST https://your-project.directus.app/files \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -F "file=@/path/to/image.jpg" \
+  -F "folder=folder-uuid" \
+  -F "title=Product Photo" \
+  -F "tags[]=product" \
+  -F "tags[]=featured"
+```
+
+## Image Transformations
+
+Transform images on-the-fly using query parameters:
+
+```
+https://your-project.directus.app/assets/{file-id}?width=800&height=600&fit=cover&quality=80
+```
+
+### Transformation Options
+
+- **width** / **height** - Resize dimensions
+- **fit** - Resize mode (cover, contain, inside, outside)
+- **quality** - JPEG/WebP quality (1-100)
+- **format** - Output format (jpg, png, webp, tiff, avif)
+- **transforms** - JSON array of transformations
+
+### Advanced Transformations
+
+```json
+[
+  ["blur", 45],
+  ["tint", "rgb(255, 0, 0)"],
+  ["rotate", 90],
+  ["extract", { "top": 0, "left": 0, "width": 500, "height": 500 }]
+]
+```
+
+Encode as URL parameter:
+
+```
+/assets/file-id?transforms=[["blur",45],["tint","rgb(255,0,0)"]]
+```
+
+## File Metadata
+
+Files in Directus include comprehensive metadata:
+
+```typescript
+interface DirectusFile {
+  id: string;
+  storage: string; // Storage location name
+  filename_disk: string; // Actual filename on disk
+  filename_download: string; // Download filename
+  title: string;
+  type: string; // MIME type
+  folder: string | null;
+  uploaded_by: string;
+  uploaded_on: string;
+  modified_by: string | null;
+  modified_on: string;
+  charset: string | null;
+  filesize: number; // Bytes
+  width: number | null; // Image width
+  height: number | null; // Image height
+  duration: number | null; // Video/audio duration
+  embed: string | null;
+  description: string | null;
+  location: string | null;
+  tags: string[];
+  metadata: Record<string, any>; // EXIF, IPTC, etc.
+}
+```
+
+## Folder Organization
+
+Organize files using folders:
+
+```typescript
+// Create folder
+const folder = await client.request(
+  createFolder({
+    name: 'Product Images',
+    parent: 'parent-folder-uuid' // Optional
+  })
+);
+
+// List files in folder
+const files = await client.request(
+  readFiles({
+    filter: {
+      folder: { _eq: folder.id }
+    }
+  })
+);
+```
+
+## Multiple Storage Locations
+
+Configure multiple storage locations for different use cases:
+
+```bash
+STORAGE_LOCATIONS="local,s3,cloudinary"
+
+# Local for development
+STORAGE_LOCAL_DRIVER="local"
+STORAGE_LOCAL_ROOT="./uploads"
+
+# S3 for production files
+STORAGE_S3_DRIVER="s3"
+STORAGE_S3_BUCKET="production-bucket"
+
+# Cloudinary for optimized images
+STORAGE_CLOUDINARY_DRIVER="cloudinary"
+STORAGE_CLOUDINARY_CLOUD_NAME="my-cloud"
+```
+
+Specify storage location when uploading:
+
+```typescript
+formData.append('storage', 'cloudinary');
+```
+
+## Security
+
+### Access Control
+
+Control file access with permissions:
+
+```typescript
+// Public access
+GET /assets/{file-id}
+
+// Authenticated access with permissions
+GET /assets/{file-id}?access_token=YOUR_TOKEN
+```
+
+### Download Tokens
+
+Generate temporary download links:
+
+```typescript
+const downloadUrl = await client.request(
+  getAssetUrl(fileId, {
+    download: true,
+    // File will be downloaded with original filename
+  })
+);
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use CDN for Production">
+    Place a CDN in front of your `/assets` endpoint for better performance and reduced server load.
+  </Accordion>
+  
+  <Accordion title="Organize with Folders">
+    Create a logical folder structure (e.g., by year, category, or project) to keep assets organized.
+  </Accordion>
+  
+  <Accordion title="Leverage Multiple Storage Locations">
+    Use local storage for development, cloud storage for production, and specialized services like Cloudinary for optimized delivery.
+  </Accordion>
+  
+  <Accordion title="Set Appropriate File Size Limits">
+    Configure `FILES_MAX_UPLOAD_SIZE` based on your storage capacity and use TUS for large files.
+  </Accordion>
+</AccordionGroup>

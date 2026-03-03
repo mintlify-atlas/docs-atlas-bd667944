@@ -1,0 +1,435 @@
+---
+title: Schema Management
+description: Learn how Directus manages database schemas, inspects tables and columns, and provides a unified interface across different database systems.
+---
+
+Directus provides powerful schema management capabilities through the `@directus/schema` package, offering a unified interface for inspecting and managing database schemas across all supported database systems.
+
+## Schema Inspector
+
+The Schema Inspector provides a database-agnostic API for querying database structure information. It abstracts away vendor-specific SQL queries and presents a consistent interface regardless of the underlying database.
+
+### Creating an Inspector
+
+```typescript
+import { createInspector } from '@directus/schema';
+import type { Knex } from 'knex';
+
+const database: Knex = getDatabase();
+const inspector = createInspector(database);
+```
+
+The inspector automatically detects your database type and returns the appropriate implementation:
+
+- **PostgreSQL** - `PostgresSchemaInspector`
+- **MySQL/MariaDB** - `MySQLSchemaInspector`
+- **SQLite** - `SqliteSchemaInspector`
+- **MS SQL Server** - `MSSQLSchemaInspector`
+- **Oracle Database** - `OracleDBSchemaInspector`
+- **CockroachDB** - `CockroachDBSchemaInspector`
+
+### Inspecting Tables
+
+#### List All Tables
+
+```typescript
+const tables = await inspector.tables();
+// ['directus_users', 'directus_files', 'articles', 'products']
+```
+
+#### Get Table Information
+
+```typescript
+// Single table
+const tableInfo = await inspector.tableInfo('articles');
+console.log(tableInfo);
+// {
+//   name: 'articles',
+//   schema: 'public',
+//   comment: 'Blog articles table',
+//   ...
+// }
+
+// All tables
+const allTables = await inspector.tableInfo();
+```
+
+#### Check if Table Exists
+
+```typescript
+const exists = await inspector.hasTable('articles');
+// true or false
+```
+
+### Inspecting Columns
+
+#### List Columns in a Table
+
+```typescript
+const columns = await inspector.columns('articles');
+// [{ column: 'id', table: 'articles' }, { column: 'title', table: 'articles' }, ...]
+```
+
+#### Get Column Information
+
+```typescript
+// All columns in a table
+const columnInfo = await inspector.columnInfo('articles');
+
+// Specific column
+const titleColumn = await inspector.columnInfo('articles', 'title');
+console.log(titleColumn);
+// {
+//   name: 'title',
+//   table: 'articles',
+//   data_type: 'varchar',
+//   max_length: 255,
+//   is_nullable: false,
+//   is_primary_key: false,
+//   has_auto_increment: false,
+//   default_value: null,
+//   comment: 'Article title',
+//   ...
+// }
+```
+
+#### Check if Column Exists
+
+```typescript
+const hasColumn = await inspector.hasColumn('articles', 'title');
+// true or false
+```
+
+### Column Metadata
+
+The column information object includes comprehensive metadata:
+
+```typescript
+interface Column {
+  name: string;                    // Column name
+  table: string;                   // Table name
+  data_type: string;               // Data type (varchar, integer, etc.)
+  default_value: any | null;       // Default value
+  max_length: number | null;       // Maximum length for string types
+  numeric_precision: number | null;// Precision for numeric types
+  numeric_scale: number | null;    // Scale for numeric types
+  is_nullable: boolean;            // Can be NULL
+  is_unique: boolean;              // Has unique constraint
+  is_primary_key: boolean;         // Is primary key
+  is_generated: boolean;           // Is generated/computed column
+  is_indexed: boolean;             // Has index
+  has_auto_increment: boolean;     // Auto-increments
+  foreign_key_schema: string | null;
+  foreign_key_table: string | null;
+  foreign_key_column: string | null;
+  comment: string | null;          // Column comment/description
+  generation_expression: string | null; // For generated columns
+}
+```
+
+### Primary Keys
+
+Get the primary key column for a table:
+
+```typescript
+const primaryKey = await inspector.primary('articles');
+// 'id'
+```
+
+Returns `null` if no primary key exists or if the table has a composite primary key.
+
+### Foreign Keys
+
+Retrieve foreign key relationships:
+
+```typescript
+// All foreign keys in database
+const allForeignKeys = await inspector.foreignKeys();
+
+// Foreign keys for specific table
+const articleForeignKeys = await inspector.foreignKeys('articles');
+// [
+//   {
+//     constraint_name: 'articles_author_foreign',
+//     table: 'articles',
+//     column: 'author_id',
+//     foreign_key_table: 'directus_users',
+//     foreign_key_column: 'id',
+//     on_update: 'CASCADE',
+//     on_delete: 'SET NULL'
+//   }
+// ]
+```
+
+## Schema Overview
+
+The `overview()` method provides a complete snapshot of your database schema in a single call:
+
+```typescript
+const overview = await inspector.overview();
+```
+
+**Returns:**
+
+```typescript
+interface SchemaOverview {
+  [tableName: string]: {
+    primary: string;  // Primary key column name
+    columns: {
+      [columnName: string]: {
+        table_name: string;
+        column_name: string;
+        default_value: any;
+        data_type: string;
+        max_length: number | null;
+        is_nullable: boolean;
+        is_generated: boolean;
+      };
+    };
+  };
+}
+```
+
+This is particularly useful for:
+- Generating complete schema documentation
+- Comparing schemas across environments
+- Building data modeling tools
+- Schema validation and testing
+
+## Database-Specific Features
+
+### PostgreSQL
+
+#### Search Path Support
+
+Set the schema search path:
+
+```typescript
+inspector.withSchema('custom_schema');
+```
+
+Configure multiple schemas in connection:
+
+```env
+DB_SEARCH_PATH='app_schema,public'
+```
+
+#### PostGIS Support
+
+When PostGIS is installed, geometry columns are automatically detected:
+
+```typescript
+const geometryColumn = await inspector.columnInfo('locations', 'coordinates');
+console.log(geometryColumn.data_type);
+// 'POINT' or 'POLYGON' instead of 'geometry'
+```
+
+### MySQL/MariaDB
+
+#### Boolean Type Detection
+
+MySQL's `tinyint(1)` is automatically mapped to boolean:
+
+```typescript
+const column = await inspector.columnInfo('settings', 'is_enabled');
+console.log(column.data_type);
+// 'boolean' (even though MySQL stores it as tinyint(1))
+```
+
+#### Engine and Collation Information
+
+```typescript
+const tableInfo = await inspector.tableInfo('articles');
+console.log(tableInfo);
+// {
+//   name: 'articles',
+//   engine: 'InnoDB',
+//   collation: 'utf8mb4_unicode_ci',
+//   ...
+// }
+```
+
+### SQLite
+
+#### Foreign Keys
+
+SQLite foreign keys are automatically enabled:
+
+```sql
+PRAGMA foreign_keys = ON
+```
+
+### Oracle Database
+
+#### Date Format Enforcement
+
+Directus enforces ISO standard date/time formats:
+
+```sql
+ALTER SESSION SET NLS_DATE_FORMAT = 'YYYY-MM-DD'
+ALTER SESSION SET NLS_TIMESTAMP_FORMAT = 'YYYY-MM-DD"T"HH24:MI:SS.FF3"Z"'
+```
+
+### CockroachDB
+
+#### Serial Normalization
+
+CockroachDB automatically configures serial handling:
+
+```sql
+SET serial_normalization = "sql_sequence"
+SET default_int_size = 4
+```
+
+## Schema Builder
+
+The `@directus/schema-builder` package provides a fluent API for building schema definitions programmatically:
+
+```typescript
+import { SchemaBuilder } from '@directus/schema-builder';
+
+const schema = new SchemaBuilder();
+
+schema
+  .collection('articles', (collection) => {
+    collection
+      .field('id', { type: 'integer', primary: true })
+      .field('title', { type: 'string', maxLength: 255 })
+      .field('content', { type: 'text' })
+      .field('author_id', { type: 'integer' });
+  })
+  .collection('authors', (collection) => {
+    collection
+      .field('id', { type: 'integer', primary: true })
+      .field('name', { type: 'string', maxLength: 100 });
+  });
+
+const schemaOverview = schema.build();
+```
+
+## Default Values
+
+Default values are parsed and normalized across database vendors:
+
+### PostgreSQL
+
+```sql
+-- Database: 'Example Title'::character varying
+-- Parsed to: 'Example Title'
+
+-- Database: nextval('table_id_seq'::regclass)
+-- Parsed to: 'AUTO_INCREMENT'
+```
+
+### MySQL
+
+```sql
+-- Database: 'Example Title'
+-- Parsed to: 'Example Title'
+
+-- AUTO_INCREMENT columns return: 'AUTO_INCREMENT'
+```
+
+### SQLite
+
+```sql
+-- Database: 'Example Title'
+-- Parsed to: 'Example Title'
+```
+
+## Best Practices
+
+### Use the Inspector for Schema Queries
+
+Instead of writing database-specific queries:
+
+```typescript
+// Don't do this
+const result = await database.raw(`
+  SELECT column_name FROM information_schema.columns
+  WHERE table_name = 'articles'
+`);
+
+// Do this
+const columns = await inspector.columns('articles');
+```
+
+### Cache Schema Information
+
+Schema information rarely changes. Cache the overview for better performance:
+
+```typescript
+import { getSchemaInspector } from './database';
+
+let schemaCache: SchemaOverview | null = null;
+
+export async function getSchema() {
+  if (!schemaCache) {
+    const inspector = getSchemaInspector();
+    schemaCache = await inspector.overview();
+  }
+  return schemaCache;
+}
+```
+
+### Handle Database-Specific Types
+
+Be aware of type variations:
+
+```typescript
+function normalizeDataType(dataType: string, dbClient: string): string {
+  if (dbClient === 'mysql' && dataType === 'tinyint(1)') {
+    return 'boolean';
+  }
+  return dataType;
+}
+```
+
+### Validate Schema Changes
+
+Before applying migrations, validate against current schema:
+
+```typescript
+const inspector = getSchemaInspector();
+const hasTable = await inspector.hasTable('new_table');
+
+if (hasTable) {
+  console.warn('Table already exists, skipping creation');
+  return;
+}
+```
+
+## Schema Validation
+
+Directus validates several aspects of your database schema:
+
+### Connection Validation
+
+Ensures database connectivity on startup.
+
+### Installation Check
+
+Verifies Directus system tables exist:
+
+```typescript
+import { isInstalled } from './database';
+
+const installed = await isInstalled();
+// Checks for 'directus_collections' table
+```
+
+### Extension Validation
+
+Validates optional database extensions:
+
+```typescript
+import { validateDatabaseExtensions } from './database';
+
+await validateDatabaseExtensions();
+// Warns if PostGIS (PostgreSQL) or Spatialite (SQLite) is missing
+```
+
+## Next Steps
+
+- Learn about [Database Migrations](/database/migrations)
+- Explore [Supported Databases](/database/supported-databases)

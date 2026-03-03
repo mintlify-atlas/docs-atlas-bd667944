@@ -1,0 +1,580 @@
+---
+title: 'WebSocket Overview'
+description: 'Real-time bidirectional communication using WebSocket connections in Directus'
+---
+
+## Introduction
+
+Directus provides WebSocket support for real-time bidirectional communication between clients and the server. WebSockets enable instant data updates, live subscriptions, and interactive operations without the overhead of repeated HTTP requests.
+
+## WebSocket Endpoints
+
+Directus exposes multiple WebSocket endpoints depending on your configuration:
+
+### REST WebSocket
+
+```
+ws://your-directus-instance.com/websocket
+wss://your-directus-instance.com/websocket
+```
+
+The main WebSocket endpoint for REST-style operations including subscriptions, CRUD operations, and heartbeat.
+
+### GraphQL WebSocket
+
+```
+ws://your-directus-instance.com/graphql
+wss://your-directus-instance.com/graphql
+```
+
+WebSocket endpoint for GraphQL subscriptions and operations.
+
+<Info>
+  Use `wss://` for secure connections (HTTPS sites) and `ws://` for local development.
+</Info>
+
+## Configuration
+
+Enable and configure WebSocket connections using environment variables:
+
+### Enable WebSockets
+
+```bash
+WEBSOCKETS_ENABLED=true
+```
+
+This is the master switch for all WebSocket functionality.
+
+### REST WebSocket Configuration
+
+```bash
+# Enable REST WebSocket endpoint
+WEBSOCKETS_REST_ENABLED=true
+
+# Custom WebSocket path (default: /websocket)
+WEBSOCKETS_REST_PATH=/websocket
+
+# Authentication mode: public, handshake, strict
+WEBSOCKETS_REST_AUTH=handshake
+
+# Authentication timeout in milliseconds (default: 10000)
+WEBSOCKETS_REST_AUTH_TIMEOUT=10000
+
+# Maximum concurrent connections (default: unlimited)
+WEBSOCKETS_REST_CONN_LIMIT=100
+```
+
+### GraphQL WebSocket Configuration
+
+```bash
+# Enable GraphQL WebSocket endpoint
+WEBSOCKETS_GRAPHQL_ENABLED=true
+
+# Custom WebSocket path (default: /graphql)
+WEBSOCKETS_GRAPHQL_PATH=/graphql
+
+# Authentication mode: public, handshake, strict
+WEBSOCKETS_GRAPHQL_AUTH=handshake
+
+# Authentication timeout in milliseconds
+WEBSOCKETS_GRAPHQL_AUTH_TIMEOUT=10000
+```
+
+### Heartbeat Configuration
+
+```bash
+# Enable WebSocket heartbeat/ping-pong
+WEBSOCKETS_HEARTBEAT_ENABLED=true
+
+# Heartbeat interval in milliseconds (default: 30000)
+WEBSOCKETS_HEARTBEAT_PERIOD=30000
+```
+
+### Logs Configuration
+
+```bash
+# Enable WebSocket log streaming
+WEBSOCKETS_LOGS_ENABLED=false
+
+# Log level: trace, debug, info, warn, error, fatal
+WEBSOCKETS_LOGS_LEVEL=info
+
+# Log style: raw or formatted
+WEBSOCKETS_LOGS_STYLE=formatted
+```
+
+## Authentication Modes
+
+Directus supports three authentication modes for WebSocket connections:
+
+### Public Mode
+
+No authentication required. Connections are established with public permissions.
+
+```bash
+WEBSOCKETS_REST_AUTH=public
+```
+
+**Use case:** Public data that doesn't require authentication.
+
+**Example connection:**
+
+```javascript
+const ws = new WebSocket('ws://your-directus-instance.com/websocket');
+```
+
+### Handshake Mode (Recommended)
+
+Clients authenticate after establishing the WebSocket connection by sending an authentication message.
+
+```bash
+WEBSOCKETS_REST_AUTH=handshake
+```
+
+**Use case:** Most applications where you want secure WebSocket connections.
+
+**Example connection:**
+
+```javascript
+const ws = new WebSocket('ws://your-directus-instance.com/websocket');
+
+ws.onopen = () => {
+  // Authenticate with access token
+  ws.send(JSON.stringify({
+    type: 'auth',
+    access_token: 'your-access-token'
+  }));
+};
+
+ws.onmessage = (event) => {
+  const message = JSON.parse(event.data);
+  
+  if (message.type === 'auth' && message.status === 'ok') {
+    console.log('Authenticated successfully');
+    // Now you can subscribe and send messages
+  }
+};
+```
+
+### Strict Mode
+
+Clients must authenticate before the WebSocket connection is established, using URL parameters or headers.
+
+```bash
+WEBSOCKETS_REST_AUTH=strict
+```
+
+**Use case:** High-security environments where unauthenticated connections should be rejected immediately.
+
+**Example connection:**
+
+```javascript
+// Authenticate via URL parameter
+const ws = new WebSocket(
+  'ws://your-directus-instance.com/websocket?access_token=your-access-token'
+);
+
+// Or via session cookie (automatically included by browser)
+const ws = new WebSocket('ws://your-directus-instance.com/websocket');
+```
+
+## Authentication Methods
+
+When using handshake mode, you can authenticate with different credential types:
+
+### Access Token
+
+```json
+{
+  "type": "auth",
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+### Email and Password
+
+```json
+{
+  "type": "auth",
+  "email": "user@example.com",
+  "password": "your-password"
+}
+```
+
+### Refresh Token
+
+```json
+{
+  "type": "auth",
+  "refresh_token": "your-refresh-token"
+}
+```
+
+## Message Format
+
+All WebSocket messages use JSON format with the following structure:
+
+### Client Messages
+
+```typescript
+{
+  type: string;           // Message type (auth, subscribe, items, ping, etc.)
+  uid?: string | number;  // Optional unique identifier for tracking responses
+  // ... additional fields based on message type
+}
+```
+
+### Server Responses
+
+```typescript
+{
+  type: string;           // Message type
+  status: 'ok' | 'error'; // Response status
+  uid?: string | number;  // Matches the request uid if provided
+  // ... additional fields based on message type
+}
+```
+
+### Error Responses
+
+```json
+{
+  "type": "subscribe",
+  "status": "error",
+  "uid": "request-123",
+  "error": {
+    "code": "FORBIDDEN",
+    "message": "You don't have permission to access this collection."
+  }
+}
+```
+
+## Connection Lifecycle
+
+### 1. Establish Connection
+
+```javascript
+const ws = new WebSocket('ws://your-directus-instance.com/websocket');
+
+ws.onopen = () => {
+  console.log('WebSocket connected');
+};
+```
+
+### 2. Authenticate (if using handshake mode)
+
+```javascript
+ws.send(JSON.stringify({
+  type: 'auth',
+  access_token: 'your-token'
+}));
+```
+
+### 3. Wait for Authentication Response
+
+```javascript
+ws.onmessage = (event) => {
+  const message = JSON.parse(event.data);
+  
+  if (message.type === 'auth' && message.status === 'ok') {
+    console.log('Authenticated');
+    // Proceed with operations
+  }
+};
+```
+
+### 4. Send Messages and Subscribe
+
+```javascript
+// Now you can send messages, subscribe to collections, etc.
+ws.send(JSON.stringify({
+  type: 'subscribe',
+  collection: 'articles',
+  uid: 'subscription-1'
+}));
+```
+
+### 5. Handle Disconnection
+
+```javascript
+ws.onclose = (event) => {
+  console.log('WebSocket disconnected', event.code, event.reason);
+};
+
+ws.onerror = (error) => {
+  console.error('WebSocket error:', error);
+};
+```
+
+## Heartbeat / Ping-Pong
+
+When `WEBSOCKETS_HEARTBEAT_ENABLED=true`, the server sends periodic ping messages to keep connections alive:
+
+```javascript
+ws.onmessage = (event) => {
+  const message = JSON.parse(event.data);
+  
+  if (message.type === 'ping') {
+    // Respond with pong
+    ws.send(JSON.stringify({ type: 'pong' }));
+  }
+};
+```
+
+<Note>
+  Most WebSocket clients handle ping/pong automatically. You typically don't need to implement this manually unless you're using a custom client.
+</Note>
+
+## Rate Limiting
+
+If rate limiting is enabled for the Directus instance, it also applies to WebSocket messages:
+
+```bash
+RATE_LIMITER_ENABLED=true
+```
+
+When rate limited, you'll receive an error response:
+
+```json
+{
+  "type": "server",
+  "status": "error",
+  "error": {
+    "code": "REQUESTS_EXCEEDED",
+    "message": "Too many messages, retry after 1000ms."
+  }
+}
+```
+
+## Token Expiration
+
+WebSocket connections automatically handle token expiration:
+
+1. When your access token is about to expire, the server sends an error
+2. You have a grace period to re-authenticate (default: 10 seconds)
+3. Send a new auth message with valid credentials
+4. If you don't re-authenticate in time, the connection is closed (in non-public mode)
+
+```javascript
+ws.onmessage = (event) => {
+  const message = JSON.parse(event.data);
+  
+  if (message.type === 'auth' && message.status === 'error') {
+    if (message.error.code === 'TOKEN_EXPIRED') {
+      // Re-authenticate
+      ws.send(JSON.stringify({
+        type: 'auth',
+        refresh_token: 'your-refresh-token'
+      }));
+    }
+  }
+};
+```
+
+## Permission Handling
+
+All WebSocket operations respect user permissions:
+
+- Subscriptions only receive updates for items the user can read
+- Item operations (create, read, update, delete) are subject to role permissions
+- Permission changes take effect immediately for active connections
+- Unauthorized operations return error responses
+
+## Basic Example
+
+Here's a complete example of connecting and authenticating:
+
+```javascript
+const ws = new WebSocket('ws://your-directus-instance.com/websocket');
+
+ws.onopen = () => {
+  console.log('Connected to WebSocket');
+  
+  // Authenticate
+  ws.send(JSON.stringify({
+    type: 'auth',
+    email: 'user@example.com',
+    password: 'password'
+  }));
+};
+
+ws.onmessage = (event) => {
+  const message = JSON.parse(event.data);
+  console.log('Received:', message);
+  
+  if (message.type === 'auth' && message.status === 'ok') {
+    console.log('Authenticated successfully');
+    
+    // Subscribe to a collection
+    ws.send(JSON.stringify({
+      type: 'subscribe',
+      collection: 'articles',
+      uid: 'sub-1'
+    }));
+  }
+  
+  if (message.type === 'subscription') {
+    console.log('Subscription event:', message.event, message.data);
+  }
+};
+
+ws.onerror = (error) => {
+  console.error('WebSocket error:', error);
+};
+
+ws.onclose = (event) => {
+  console.log('Disconnected:', event.code, event.reason);
+};
+```
+
+## Error Codes
+
+Common WebSocket error codes:
+
+| Code | Description |
+|------|-------------|
+| `AUTH_FAILED` | Authentication credentials are invalid |
+| `AUTH_TIMEOUT` | Authentication took too long |
+| `TOKEN_EXPIRED` | Access token has expired |
+| `INVALID_PAYLOAD` | Message format is invalid |
+| `INVALID_COLLECTION` | Collection doesn't exist or isn't accessible |
+| `FORBIDDEN` | No permission for the requested operation |
+| `REQUESTS_EXCEEDED` | Rate limit exceeded |
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Unique IDs for Tracking">
+    Always include a `uid` field in your messages to track responses:
+
+    ```javascript
+    ws.send(JSON.stringify({
+      type: 'subscribe',
+      collection: 'articles',
+      uid: 'subscription-1' // Track this subscription
+    }));
+    ```
+  </Accordion>
+
+  <Accordion title="Handle Reconnection">
+    Implement automatic reconnection logic for production:
+
+    ```javascript
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 10;
+
+    function connect() {
+      const ws = new WebSocket('ws://your-instance.com/websocket');
+      
+      ws.onclose = () => {
+        if (reconnectAttempts < maxReconnectAttempts) {
+          reconnectAttempts++;
+          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+          setTimeout(connect, delay);
+        }
+      };
+      
+      ws.onopen = () => {
+        reconnectAttempts = 0;
+      };
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Validate Messages">
+    Always validate incoming messages before using them:
+
+    ```javascript
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        
+        if (!message.type || !message.status) {
+          console.warn('Invalid message format');
+          return;
+        }
+        
+        // Process message...
+      } catch (error) {
+        console.error('Failed to parse message:', error);
+      }
+    };
+    ```
+  </Accordion>
+
+  <Accordion title="Use Handshake Mode">
+    Prefer handshake authentication over strict mode for better security:
+
+    ```bash
+    # Recommended
+    WEBSOCKETS_REST_AUTH=handshake
+    
+    # Avoid passing tokens in URL
+    WEBSOCKETS_REST_AUTH=strict
+    ```
+  </Accordion>
+
+  <Accordion title="Close Connections Properly">
+    Always close WebSocket connections when done:
+
+    ```javascript
+    // Before page unload
+    window.addEventListener('beforeunload', () => {
+      ws.close(1000, 'Page unload');
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Connection Refused">
+    Ensure WebSockets are enabled:
+    
+    ```bash
+    WEBSOCKETS_ENABLED=true
+    WEBSOCKETS_REST_ENABLED=true
+    ```
+  </Accordion>
+
+  <Accordion title="Authentication Fails">
+    Check your authentication mode and credentials:
+    
+    - Verify the `WEBSOCKETS_REST_AUTH` setting
+    - Ensure your access token is valid
+    - Check that the user has the required permissions
+  </Accordion>
+
+  <Accordion title="Connection Timeout">
+    Increase the authentication timeout:
+    
+    ```bash
+    WEBSOCKETS_REST_AUTH_TIMEOUT=30000
+    ```
+  </Accordion>
+
+  <Accordion title="Max Connections Reached">
+    Adjust the connection limit:
+    
+    ```bash
+    WEBSOCKETS_REST_CONN_LIMIT=200
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="WebSocket Subscriptions" icon="tower-broadcast" href="/api/websocket/subscriptions">
+    Subscribe to real-time collection updates
+  </Card>
+  
+  <Card title="SDK Real-time" icon="code" href="/api/sdk/real-time">
+    Use the Directus SDK for WebSocket operations
+  </Card>
+  
+  <Card title="GraphQL Subscriptions" icon="diagram-project" href="/api/graphql/subscriptions">
+    Real-time updates with GraphQL
+  </Card>
+</CardGroup>

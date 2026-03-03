@@ -1,0 +1,127 @@
+---
+title: Interface Extensions
+description: Create custom field input components
+---
+
+Interfaces are the input components users interact with when editing field values.
+
+## Overview
+
+Directus includes 45+ built-in interfaces like text inputs, dropdowns, WYSIWYG editors, and more. You can create custom interfaces for specialized input types.
+
+## Creating an Interface
+
+Scaffold a new interface:
+
+```bash
+npm init directus-extension
+# Select "interface" as the extension type
+```
+
+## Interface Structure
+
+```typescript
+import { defineInterface } from '@directus/extensions-sdk';
+
+export default defineInterface({
+  id: 'my-interface',
+  name: 'My Interface',
+  icon: 'box',
+  description: 'A custom interface',
+  component: InterfaceComponent,
+  options: [
+    {
+      field: 'placeholder',
+      name: 'Placeholder',
+      type: 'string',
+      meta: {
+        interface: 'input',
+        width: 'full',
+      },
+    },
+  ],
+  types: ['string'],
+});
+```
+
+## Component
+
+The Vue component receives the value and emits updates:
+
+```vue
+<template>
+  <input
+    :value="value"
+    @input="$emit('input', $event.target.value)"
+    :placeholder="placeholder"
+  />
+</template>
+
+<script>
+export default {
+  props: {
+    value: {
+      type: String,
+      default: null,
+    },
+    placeholder: {
+      type: String,
+      default: 'Enter value...',
+    },
+  },
+};
+</script>
+```
+
+## Interface Properties
+
+<ParamField path="id" type="string" required>
+  Unique identifier for the interface
+</ParamField>
+
+<ParamField path="name" type="string" required>
+  Human-readable name
+</ParamField>
+
+<ParamField path="icon" type="string" required>
+  Material icon name
+</ParamField>
+
+<ParamField path="component" type="Component" required>
+  Vue component for the interface
+</ParamField>
+
+<ParamField path="types" type="string[]" required>
+  Compatible field types (string, integer, json, etc.)
+</ParamField>
+
+<ParamField path="options" type="Field[]">
+  Configuration options for the interface
+</ParamField>
+
+<ParamField path="relational" type="boolean">
+  Whether this interface works with relational fields
+</ParamField>
+
+## Built-in Interfaces
+
+Directus includes interfaces for:
+- Text and WYSIWYG editors
+- Dropdowns and checkboxes
+- Date and time pickers
+- File and image uploads
+- Relational field selectors
+- JSON and code editors
+- Map and location pickers
+- And many more...
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Displays" icon="eye" href="/extensions/displays">
+    Create display components
+  </Card>
+  <Card title="Layouts" icon="table-layout" href="/extensions/layouts">
+    Create layout views
+  </Card>
+</CardGroup>

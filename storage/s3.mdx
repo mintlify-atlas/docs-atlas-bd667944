@@ -1,0 +1,340 @@
+---
+title: S3 Storage
+description: Configure Amazon S3 or S3-compatible storage in Directus for scalable cloud file storage.
+---
+
+The S3 storage driver supports Amazon S3 and S3-compatible storage services like DigitalOcean Spaces, MinIO, Cloudflare R2, and Backblaze B2. It provides scalable, reliable cloud storage with built-in redundancy.
+
+## Installation
+
+The S3 driver is included by default with Directus via the `@directus/storage-driver-s3` package, which uses the AWS SDK v3.
+
+## Configuration
+
+Configure S3 storage using environment variables:
+
+```bash
+# Define storage location
+STORAGE_LOCATIONS="s3"
+
+# Configure S3 driver
+STORAGE_S3_DRIVER="s3"
+STORAGE_S3_BUCKET="my-bucket"
+STORAGE_S3_REGION="us-east-1"
+STORAGE_S3_KEY="your-access-key-id"
+STORAGE_S3_SECRET="your-secret-access-key"
+```
+
+### Configuration Options
+
+<ParamField path="bucket" type="string" required>
+  The S3 bucket name where files will be stored.
+</ParamField>
+
+<ParamField path="key" type="string">
+  AWS access key ID. If not provided, uses default AWS credential chain (environment variables, IAM roles, etc.).
+</ParamField>
+
+<ParamField path="secret" type="string">
+  AWS secret access key. Required if `key` is provided.
+</ParamField>
+
+<ParamField path="region" type="string">
+  AWS region where the bucket is located (e.g., `us-east-1`, `eu-west-1`).
+</ParamField>
+
+<ParamField path="root" type="string">
+  Optional path prefix for all files within the bucket.
+</ParamField>
+
+<ParamField path="endpoint" type="string">
+  Custom S3 endpoint URL for S3-compatible services. Include protocol (http:// or https://).
+</ParamField>
+
+<ParamField path="forcePathStyle" type="boolean">
+  Use path-style URLs instead of virtual-hosted-style. Required for some S3-compatible services.
+</ParamField>
+
+<ParamField path="acl" type="string">
+  Access Control List for uploaded files. Options: `private`, `public-read`, `public-read-write`, `authenticated-read`, etc.
+</ParamField>
+
+<ParamField path="serverSideEncryption" type="string">
+  Server-side encryption type: `AES256`, `aws:kms`, or `aws:kms:dsse`.
+</ParamField>
+
+<ParamField path="serverSideEncryptionKmsKeyId" type="string">
+  KMS key ID for encryption when using `aws:kms` or `aws:kms:dsse`.
+</ParamField>
+
+<ParamField path="connectionTimeout" type="number">
+  Connection timeout in milliseconds. Default: `5000`.
+</ParamField>
+
+<ParamField path="socketTimeout" type="number">
+  Socket timeout in milliseconds. Default: `120000`.
+</ParamField>
+
+<ParamField path="maxSockets" type="number">
+  Maximum number of concurrent sockets. Default: `500`.
+</ParamField>
+
+<ParamField path="keepAlive" type="boolean">
+  Enable HTTP keep-alive. Default: `true`.
+</ParamField>
+
+<ParamField path="tus.chunkSize" type="number">
+  Chunk size for resumable uploads in bytes. Default: `5242880` (5 MiB). Minimum: `5242880` (5 MiB).
+</ParamField>
+
+## Examples
+
+### Amazon S3
+
+```bash
+STORAGE_LOCATIONS="s3"
+STORAGE_S3_DRIVER="s3"
+STORAGE_S3_BUCKET="my-directus-files"
+STORAGE_S3_REGION="us-east-1"
+STORAGE_S3_KEY="AKIAIOSFODNN7EXAMPLE"
+STORAGE_S3_SECRET="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+```
+
+### With Root Path
+
+```bash
+STORAGE_LOCATIONS="s3"
+STORAGE_S3_DRIVER="s3"
+STORAGE_S3_BUCKET="shared-bucket"
+STORAGE_S3_REGION="us-east-1"
+STORAGE_S3_ROOT="directus/production"
+STORAGE_S3_KEY="AKIAIOSFODNN7EXAMPLE"
+STORAGE_S3_SECRET="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+```
+
+### IAM Role (EC2/ECS)
+
+```bash
+# Credentials automatically loaded from IAM role
+STORAGE_LOCATIONS="s3"
+STORAGE_S3_DRIVER="s3"
+STORAGE_S3_BUCKET="my-bucket"
+STORAGE_S3_REGION="us-east-1"
+```
+
+### Public Read Access
+
+```bash
+STORAGE_LOCATIONS="s3"
+STORAGE_S3_DRIVER="s3"
+STORAGE_S3_BUCKET="my-bucket"
+STORAGE_S3_REGION="us-east-1"
+STORAGE_S3_ACL="public-read"
+STORAGE_S3_KEY="AKIAIOSFODNN7EXAMPLE"
+STORAGE_S3_SECRET="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+```
+
+### Server-Side Encryption
+
+```bash
+STORAGE_LOCATIONS="s3"
+STORAGE_S3_DRIVER="s3"
+STORAGE_S3_BUCKET="my-bucket"
+STORAGE_S3_REGION="us-east-1"
+STORAGE_S3_SERVER_SIDE_ENCRYPTION="AES256"
+STORAGE_S3_KEY="AKIAIOSFODNN7EXAMPLE"
+STORAGE_S3_SECRET="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+```
+
+### KMS Encryption
+
+```bash
+STORAGE_LOCATIONS="s3"
+STORAGE_S3_DRIVER="s3"
+STORAGE_S3_BUCKET="my-bucket"
+STORAGE_S3_REGION="us-east-1"
+STORAGE_S3_SERVER_SIDE_ENCRYPTION="aws:kms"
+STORAGE_S3_SERVER_SIDE_ENCRYPTION_KMS_KEY_ID="arn:aws:kms:us-east-1:123456789:key/12345678-1234-1234-1234-123456789012"
+STORAGE_S3_KEY="AKIAIOSFODNN7EXAMPLE"
+STORAGE_S3_SECRET="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+```
+
+### DigitalOcean Spaces
+
+```bash
+STORAGE_LOCATIONS="spaces"
+STORAGE_SPACES_DRIVER="s3"
+STORAGE_SPACES_BUCKET="my-space"
+STORAGE_SPACES_REGION="nyc3"
+STORAGE_SPACES_ENDPOINT="https://nyc3.digitaloceanspaces.com"
+STORAGE_SPACES_KEY="your-access-key"
+STORAGE_SPACES_SECRET="your-secret-key"
+```
+
+### Cloudflare R2
+
+```bash
+STORAGE_LOCATIONS="r2"
+STORAGE_R2_DRIVER="s3"
+STORAGE_R2_BUCKET="my-bucket"
+STORAGE_R2_REGION="auto"
+STORAGE_R2_ENDPOINT="https://your-account-id.r2.cloudflarestorage.com"
+STORAGE_R2_KEY="your-access-key-id"
+STORAGE_R2_SECRET="your-secret-access-key"
+```
+
+### MinIO
+
+```bash
+STORAGE_LOCATIONS="minio"
+STORAGE_MINIO_DRIVER="s3"
+STORAGE_MINIO_BUCKET="directus"
+STORAGE_MINIO_REGION="us-east-1"
+STORAGE_MINIO_ENDPOINT="http://minio:9000"
+STORAGE_MINIO_FORCE_PATH_STYLE="true"
+STORAGE_MINIO_KEY="minioadmin"
+STORAGE_MINIO_SECRET="minioadmin"
+```
+
+### Backblaze B2
+
+```bash
+STORAGE_LOCATIONS="b2"
+STORAGE_B2_DRIVER="s3"
+STORAGE_B2_BUCKET="my-bucket"
+STORAGE_B2_REGION="us-west-001"
+STORAGE_B2_ENDPOINT="https://s3.us-west-001.backblazeb2.com"
+STORAGE_B2_KEY="your-key-id"
+STORAGE_B2_SECRET="your-application-key"
+```
+
+## Features
+
+### Resumable Uploads
+
+The S3 driver supports TUS resumable uploads using S3 multipart upload:
+- Automatic chunking of large files
+- Resume interrupted uploads
+- Maximum upload size: 5 TiB
+- Maximum parts: 10,000
+- Minimum part size: 5 MiB
+
+### Multipart Upload
+
+The driver implements S3 multipart upload from `/packages/storage-driver-s3/src/index.ts:68-587`:
+- Uploads are split into chunks
+- Chunks are uploaded in parallel (max 60 concurrent)
+- Failed parts can be retried independently
+- Incomplete uploads can be aborted
+
+### Performance Optimization
+
+The driver is optimized for high-concurrency environments from `/packages/storage-driver-s3/src/index.ts:89-107`:
+- Custom connection pool with 500 max sockets (configurable)
+- HTTP keep-alive enabled by default
+- Configurable timeouts
+- Efficient memory usage with streams
+
+## Best Practices
+
+### IAM Permissions
+
+Minimum required IAM permissions:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:DeleteObject",
+        "s3:ListBucket",
+        "s3:GetObjectVersion",
+        "s3:AbortMultipartUpload",
+        "s3:ListMultipartUploadParts"
+      ],
+      "Resource": [
+        "arn:aws:s3:::my-bucket",
+        "arn:aws:s3:::my-bucket/*"
+      ]
+    }
+  ]
+}
+```
+
+### CORS Configuration
+
+If accessing files directly from the browser:
+
+```json
+[
+  {
+    "AllowedOrigins": ["https://your-directus-instance.com"],
+    "AllowedMethods": ["GET", "PUT", "POST", "DELETE", "HEAD"],
+    "AllowedHeaders": ["*"],
+    "ExposeHeaders": ["ETag", "Upload-Offset", "Location"],
+    "MaxAgeSeconds": 3000
+  }
+]
+```
+
+### Bucket Lifecycle
+
+Configure lifecycle rules to clean up incomplete multipart uploads:
+
+```json
+{
+  "Rules": [
+    {
+      "Id": "DeleteIncompleteMultipartUploads",
+      "Status": "Enabled",
+      "AbortIncompleteMultipartUpload": {
+        "DaysAfterInitiation": 7
+      }
+    }
+  ]
+}
+```
+
+### Cost Optimization
+
+- Use S3 Intelligent-Tiering for automatic cost optimization
+- Enable S3 Transfer Acceleration for faster uploads from distant regions
+- Consider CloudFront CDN for frequently accessed files
+- Monitor S3 request costs for high-traffic applications
+
+## Troubleshooting
+
+### Access Denied Errors
+
+1. Verify IAM permissions
+2. Check bucket policies
+3. Ensure credentials are correct
+4. Verify bucket exists in the specified region
+
+### Slow Upload Performance
+
+Adjust concurrency and chunk size:
+
+```bash
+STORAGE_S3_TUS__CHUNK_SIZE="10485760"  # 10 MiB chunks
+STORAGE_S3_MAX_SOCKETS="1000"
+```
+
+### Connection Timeout Issues
+
+Increase timeout values:
+
+```bash
+STORAGE_S3_CONNECTION_TIMEOUT="10000"  # 10 seconds
+STORAGE_S3_SOCKET_TIMEOUT="300000"    # 5 minutes
+```
+
+## Related
+
+- [Storage Overview](/storage/overview)
+- [Azure Storage](/storage/azure)
+- [Google Cloud Storage](/storage/gcs)

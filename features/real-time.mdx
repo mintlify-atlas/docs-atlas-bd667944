@@ -1,0 +1,435 @@
+---
+title: Real-Time
+description: Build real-time applications with Directus WebSocket support for live data updates and collaborative editing.
+---
+
+Directus provides real-time capabilities through WebSocket connections, enabling live updates, subscriptions, and collaborative editing features.
+
+## WebSocket Connection
+
+Connect to Directus via WebSocket for bidirectional communication:
+
+```typescript
+import { createDirectus, realtime } from '@directus/sdk';
+
+const client = createDirectus('https://your-project.directus.app')
+  .with(realtime());
+
+// Connect to WebSocket
+await client.connect();
+
+// Connection is now established
+```
+
+### WebSocket URL
+
+The WebSocket endpoint is available at:
+
+```
+wss://your-project.directus.app/websocket
+```
+
+For local development with HTTP:
+```
+ws://localhost:8055/websocket
+```
+
+## Authentication
+
+Authenticate your WebSocket connection:
+
+### Using Email & Password
+
+```typescript
+const client = createDirectus('https://your-project.directus.app')
+  .with(realtime());
+
+await client.connect();
+
+await client.sendMessage({
+  type: 'auth',
+  email: 'user@example.com',
+  password: 'password'
+});
+```
+
+### Using Access Token
+
+```typescript
+await client.sendMessage({
+  type: 'auth',
+  access_token: 'your-access-token'
+});
+```
+
+### Using Refresh Token
+
+```typescript
+await client.sendMessage({
+  type: 'auth',
+  refresh_token: 'your-refresh-token'
+});
+```
+
+## Subscriptions
+
+Subscribe to real-time updates for collections:
+
+### Subscribe to Collection
+
+```typescript
+const { subscription } = await client.subscribe('articles', {
+  query: {
+    filter: {
+      status: { _eq: 'published' }
+    },
+    fields: ['id', 'title', 'author.email']
+  }
+});
+
+// Listen for updates
+for await (const message of subscription) {
+  console.log('Update:', message);
+  
+  if (message.event === 'init') {
+    console.log('Initial data:', message.data);
+  }
+  
+  if (message.event === 'create') {
+    console.log('New item:', message.data);
+  }
+  
+  if (message.event === 'update') {
+    console.log('Updated item:', message.data);
+  }
+  
+  if (message.event === 'delete') {
+    console.log('Deleted items:', message.data);
+  }
+}
+```
+
+### Subscription Events
+
+WebSocket subscriptions emit different event types:
+
+- **init** - Initial data when subscription starts
+- **create** - New items matching the filter
+- **update** - Items updated to match the filter
+- **delete** - Items deleted or no longer match filter
+
+### Subscription Message Format
+
+```typescript
+interface SubscriptionMessage {
+  type: 'subscription';
+  event: 'init' | 'create' | 'update' | 'delete';
+  data: any[];
+  uid?: string | number;
+}
+```
+
+## Live Queries
+
+Execute live queries that update automatically:
+
+```typescript
+// Subscribe with advanced query
+const { subscription } = await client.subscribe('articles', {
+  query: {
+    filter: {
+      _and: [
+        { status: { _eq: 'published' } },
+        { date_created: { _gte: '$NOW(-7 days)' } }
+      ]
+    },
+    fields: ['*', 'author.*', 'categories.*'],
+    sort: ['-date_created'],
+    limit: 20
+  }
+});
+
+for await (const message of subscription) {
+  // Real-time filtered results
+  updateUI(message.data);
+}
+```
+
+## Heartbeat
+
+Maintain connection with heartbeat pings:
+
+```typescript
+// Send heartbeat
+await client.sendMessage({
+  type: 'ping'
+});
+
+// Receive heartbeat response
+// { type: 'pong' }
+```
+
+The SDK automatically handles heartbeats to keep the connection alive.
+
+## Connection Management
+
+### Connection Events
+
+```typescript
+client.onWebSocket('open', () => {
+  console.log('WebSocket connected');
+});
+
+client.onWebSocket('error', (error) => {
+  console.error('WebSocket error:', error);
+});
+
+client.onWebSocket('close', () => {
+  console.log('WebSocket disconnected');
+});
+
+client.onWebSocket('message', (message) => {
+  console.log('Received:', message);
+});
+```
+
+### Disconnect
+
+```typescript
+// Close WebSocket connection
+await client.disconnect();
+```
+
+### Reconnection
+
+The SDK automatically attempts to reconnect on connection loss:
+
+```typescript
+// Reconnection happens automatically
+// Subscriptions are re-established after reconnect
+```
+
+## Collaborative Editing
+
+Directus supports collaborative editing with operational transformation:
+
+```typescript
+// Subscribe to item for collaboration
+const { subscription } = await client.subscribe('articles', {
+  query: {
+    filter: { id: { _eq: 'article-id' } }
+  }
+});
+
+// Listen for changes from other users
+for await (const message of subscription) {
+  if (message.event === 'update') {
+    // Apply changes to editor
+    applyRemoteChanges(message.data);
+  }
+}
+
+// Send local changes
+await client.request(
+  updateItem('articles', 'article-id', {
+    content: updatedContent
+  })
+);
+```
+
+## Presence
+
+Track online users and their activity:
+
+```typescript
+// Track who's viewing an item
+const presenceData = {
+  collection: 'articles',
+  item: 'article-id',
+  user: userId,
+  timestamp: Date.now()
+};
+
+// Store presence in separate collection
+await client.request(
+  createItem('presence', presenceData)
+);
+
+// Subscribe to presence updates
+const { subscription } = await client.subscribe('presence', {
+  query: {
+    filter: {
+      collection: { _eq: 'articles' },
+      item: { _eq: 'article-id' },
+      timestamp: { _gte: '$NOW(-5 minutes)' }
+    }
+  }
+});
+```
+
+## Real-Time Notifications
+
+Implement live notification system:
+
+```typescript
+// Subscribe to user's notifications
+const { subscription } = await client.subscribe('directus_notifications', {
+  query: {
+    filter: {
+      recipient: { _eq: currentUserId },
+      status: { _eq: 'unread' }
+    }
+  }
+});
+
+for await (const message of subscription) {
+  if (message.event === 'create') {
+    // Show notification toast
+    showNotification(message.data[0]);
+  }
+}
+```
+
+## Activity Feed
+
+Create real-time activity streams:
+
+```typescript
+const { subscription } = await client.subscribe('directus_activity', {
+  query: {
+    filter: {
+      collection: { _eq: 'articles' },
+      action: { _in: ['create', 'update', 'delete'] }
+    },
+    fields: ['*', 'user.first_name', 'user.last_name'],
+    sort: ['-timestamp'],
+    limit: 50
+  }
+});
+
+for await (const message of subscription) {
+  if (message.event === 'create') {
+    // Add to activity feed
+    addActivityItem(message.data[0]);
+  }
+}
+```
+
+## Live Dashboard
+
+Build real-time dashboards:
+
+```typescript
+// Subscribe to multiple collections
+const articlesSubscription = await client.subscribe('articles', {
+  query: {
+    aggregate: { count: '*' },
+    filter: { status: { _eq: 'published' } }
+  }
+});
+
+const usersSubscription = await client.subscribe('directus_users', {
+  query: {
+    aggregate: { count: '*' },
+    filter: { status: { _eq: 'active' } }
+  }
+});
+
+// Update dashboard in real-time
+for await (const message of articlesSubscription.subscription) {
+  updateMetric('articles', message.data);
+}
+```
+
+## Performance Considerations
+
+### Filter Subscriptions
+
+Always use filters to limit subscription data:
+
+```typescript
+// ✅ Good - filtered subscription
+await client.subscribe('articles', {
+  query: {
+    filter: { author: { _eq: currentUserId } }
+  }
+});
+
+// ❌ Bad - subscribing to all items
+await client.subscribe('articles');
+```
+
+### Limit Fields
+
+Request only needed fields:
+
+```typescript
+await client.subscribe('articles', {
+  query: {
+    fields: ['id', 'title', 'status'] // Only what you need
+  }
+});
+```
+
+### Unsubscribe When Done
+
+```typescript
+const { subscription, unsubscribe } = await client.subscribe('articles');
+
+// Later...
+await unsubscribe();
+```
+
+## WebSocket Configuration
+
+### Server Configuration
+
+```bash
+# Enable WebSocket
+WEBSOCKETS_ENABLED=true
+
+# GraphQL subscriptions over WebSocket
+WEBSOCKETS_GRAPHQL_ENABLED=true
+
+# Heartbeat interval (ms)
+WEBSOCKETS_HEARTBEAT_PERIOD=30000
+
+# Authentication timeout (ms)
+WEBSOCKETS_AUTH_TIMEOUT=10000
+```
+
+## Error Handling
+
+```typescript
+try {
+  const { subscription } = await client.subscribe('articles');
+  
+  for await (const message of subscription) {
+    if (message.type === 'error') {
+      console.error('Subscription error:', message.error);
+    }
+  }
+} catch (error) {
+  console.error('Connection error:', error);
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Filter Aggressively">
+    Only subscribe to data you need. Use filters to reduce bandwidth and processing.
+  </Accordion>
+  
+  <Accordion title="Handle Reconnections">
+    Implement UI feedback for connection state and handle reconnection gracefully.
+  </Accordion>
+  
+  <Accordion title="Unsubscribe When Not Needed">
+    Clean up subscriptions when components unmount or data is no longer needed.
+  </Accordion>
+  
+  <Accordion title="Use Heartbeats">
+    Enable heartbeats to detect stale connections and reconnect automatically.
+  </Accordion>
+</AccordionGroup>

@@ -1,0 +1,259 @@
+---
+title: Data Modeling
+description: Build flexible data structures with Directus's powerful data modeling features including collections, fields, and relationships.
+---
+
+Directus provides a flexible and powerful data modeling system that allows you to define and manage your database schema through an intuitive interface or API. The data model supports any SQL database and automatically mirrors your database schema.
+
+## Collections
+
+Collections are the foundation of your data model in Directus. Each collection represents a table in your database and can be managed dynamically.
+
+### Creating Collections
+
+Collections can be created through the App, API, or directly in your database:
+
+```typescript
+import { createDirectus, rest } from '@directus/sdk';
+
+const client = createDirectus('https://your-project.directus.app').with(rest());
+
+await client.request(
+  createCollection({
+    collection: 'articles',
+    meta: {
+      icon: 'article',
+      note: 'Blog articles collection'
+    },
+    schema: {
+      name: 'articles'
+    },
+    fields: [
+      {
+        field: 'id',
+        type: 'integer',
+        schema: {
+          is_primary_key: true,
+          has_auto_increment: true
+        }
+      },
+      {
+        field: 'title',
+        type: 'string',
+        schema: {
+          is_nullable: false
+        }
+      }
+    ]
+  })
+);
+```
+
+### System Collections
+
+Directus includes built-in system collections for managing:
+
+- **directus_users** - User accounts and authentication
+- **directus_files** - File metadata and asset management
+- **directus_folders** - File organization hierarchy
+- **directus_roles** - Access control roles
+- **directus_permissions** - Granular permission rules
+- **directus_activity** - Action logs and revisions
+- **directus_flows** - Automation workflows
+- **directus_operations** - Flow operation steps
+
+## Fields
+
+Fields define the columns in your collections with rich metadata and validation options.
+
+### Field Types
+
+Directus supports all standard database types:
+
+- **String** - Text data (VARCHAR, TEXT)
+- **Integer** - Whole numbers
+- **Float** - Decimal numbers  
+- **Boolean** - True/false values
+- **Date/Time** - Timestamps and dates
+- **JSON** - Structured data objects
+- **UUID** - Unique identifiers
+- **Binary** - File and blob data
+
+### Creating Fields
+
+```typescript
+await client.request(
+  createField('articles', {
+    field: 'status',
+    type: 'string',
+    meta: {
+      interface: 'select-dropdown',
+      options: {
+        choices: [
+          { text: 'Draft', value: 'draft' },
+          { text: 'Published', value: 'published' },
+          { text: 'Archived', value: 'archived' }
+        ]
+      }
+    },
+    schema: {
+      default_value: 'draft',
+      is_nullable: false
+    }
+  })
+);
+```
+
+### Field Metadata
+
+Each field can include rich metadata for the App interface:
+
+- **Interface** - Input component (text-input, select-dropdown, wysiwyg, etc.)
+- **Display** - Read-only display template
+- **Options** - Interface-specific configuration
+- **Validation** - Rules and constraints
+- **Conditions** - Show/hide based on other field values
+- **Width** - Layout width (half, full, fill)
+
+## Relationships
+
+Directus supports all standard relational database patterns:
+
+### One-to-Many (O2M)
+
+A single parent record relates to multiple child records.
+
+```typescript
+// Add author_id to articles collection
+await client.request(
+  createField('articles', {
+    field: 'author',
+    type: 'integer',
+    schema: {
+      foreign_key_table: 'directus_users',
+      foreign_key_column: 'id'
+    },
+    meta: {
+      interface: 'select-dropdown-m2o'
+    }
+  })
+);
+```
+
+### Many-to-One (M2O)
+
+The inverse of O2M - multiple records relate to a single parent.
+
+### Many-to-Many (M2M)
+
+Records from both collections relate to multiple records in the other through a junction table.
+
+```typescript
+// Articles to Categories (many-to-many)
+await client.request(
+  createRelation({
+    collection: 'articles',
+    field: 'categories',
+    related_collection: 'categories',
+    meta: {
+      junction_field: 'article_id'
+    },
+    schema: {
+      on_delete: 'SET NULL'
+    }
+  })
+);
+```
+
+### Many-to-Any (M2A)
+
+Relate to items across multiple collections - useful for polymorphic relationships.
+
+## Schema Migration
+
+Changes to your data model are automatically synced to your database:
+
+1. **Create** - New collections and fields are created in the database
+2. **Update** - Field types and constraints are altered
+3. **Delete** - Collections and fields can be removed (with cascade options)
+
+<Warning>
+Always backup your database before making structural changes in production.
+</Warning>
+
+## Validation & Constraints
+
+### Field Validation
+
+Add validation rules to ensure data quality:
+
+```javascript
+{
+  field: 'email',
+  type: 'string',
+  meta: {
+    validation: {
+      _and: [
+        {
+          email: {
+            _regex: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$'
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+### Database Constraints
+
+- **Primary Keys** - Unique row identifiers
+- **Foreign Keys** - Referential integrity
+- **Unique Constraints** - Prevent duplicates
+- **Not Null** - Required fields
+- **Default Values** - Auto-populated values
+- **Check Constraints** - Custom validation rules
+
+## Aliases & Virtual Fields
+
+Create computed fields that don't exist in the database:
+
+```javascript
+{
+  field: 'full_name',
+  type: 'alias',
+  meta: {
+    special: ['alias', 'no-data'],
+    interface: 'presentation-notice',
+    options: {
+      text: '{{ first_name }} {{ last_name }}'
+    }
+  }
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Appropriate Field Types">
+    Choose the most specific type for your data - use `integer` instead of `string` for numbers, `boolean` instead of integers for flags, etc.
+  </Accordion>
+  
+  <Accordion title="Define Clear Relationships">
+    Model relationships explicitly rather than storing IDs as strings. This enables relational queries and data integrity.
+  </Accordion>
+  
+  <Accordion title="Leverage Metadata">
+    Use field metadata to create better user experiences - add helpful notes, validation rules, and appropriate interfaces.
+  </Accordion>
+  
+  <Accordion title="Plan for Localization">
+    If you need multilingual content, use the translations interface and proper relationship structures.
+  </Accordion>
+</AccordionGroup>
+
+## Related Resources
+
+- [SDK Reference](/sdk)
+- [API Reference](/api)
+- [Access Control](/features/authentication)

@@ -1,0 +1,527 @@
+---
+title: Users & Roles
+description: Users are individual accounts that authenticate with Directus, while roles define groups with shared permissions and access levels through policies.
+---
+
+## What are Users?
+
+Users are individual accounts that can authenticate and access Directus. Each user has a unique email address, password (or authentication method), and is assigned to one or more roles that determine their permissions and access levels.
+
+<Note>
+Users are stored in the `directus_users` system collection and can be managed through the API or admin interface.
+</Note>
+
+## User Structure
+
+Users have both required system fields and optional profile information:
+
+### Required Fields
+
+- **`id`** - Unique identifier (UUID)
+- **`email`** - Unique email address (case-insensitive)
+- **`password`** - Hashed password
+- **`role`** - Assigned role ID
+- **`status`** - Account status (`active`, `suspended`, `draft`, `invited`)
+- **`provider`** - Authentication provider (`default`, `ldap`, `oauth`, etc.)
+
+### Optional Fields
+
+- **`first_name`** - User's first name
+- **`last_name`** - User's last name
+- **`avatar`** - Profile image (file ID)
+- **`language`** - Preferred interface language
+- **`theme`** - App theme preference (`auto`, `light`, `dark`)
+- **`tfa_secret`** - Two-factor authentication secret
+- **`email_notifications`** - Enable email notifications
+- **`title`** - Job title
+- **`description`** - User bio/description
+- **`tags`** - Organizational tags
+- **`location`** - Geographic location
+
+## Creating Users
+
+### Via API
+
+```http
+POST /users
+Content-Type: application/json
+
+{
+  "email": "editor@example.com",
+  "password": "SecurePassword123!",
+  "role": "editor-role-id",
+  "first_name": "Jane",
+  "last_name": "Smith",
+  "status": "active"
+}
+```
+
+From the source code (`~/workspace/source/api/src/services/users.ts:190-200`), creating a user:
+
+1. Validates email uniqueness (case-insensitive)
+2. Checks password against password policy
+3. Hashes the password securely
+4. Creates the user record
+5. Triggers user creation hooks
+
+### Email Validation
+
+From the source code (`~/workspace/source/api/src/services/users.ts:50-80`):
+
+```typescript
+private async checkUniqueEmails(emails: string[], excludeKey?: PrimaryKey): Promise<void> {
+  emails = emails.map((email) => email.toLowerCase());
+  
+  const duplicates = emails.filter((value, index, array) => 
+    array.indexOf(value) !== index
+  );
+  
+  if (duplicates.length) {
+    throw new RecordNotUniqueError({
+      collection: 'directus_users',
+      field: 'email',
+    });
+  }
+  
+  const query = this.knex
+    .select('email')
+    .from('directus_users')
+    .whereRaw(`LOWER(??) IN (${emails.map(() => '?')})`, ['email', ...emails]);
+  
+  if (excludeKey) {
+    query.whereNot('id', excludeKey);
+  }
+  
+  const results = await query;
+  
+  if (results.length) {
+    throw new RecordNotUniqueError({
+      collection: 'directus_users',
+      field: 'email',
+    });
+  }
+}
+```
+
+### Password Policies
+
+From the source code (`~/workspace/source/api/src/services/users.ts:87-118`), passwords are validated against configurable policies:
+
+```typescript
+private async checkPasswordPolicy(passwords: string[]): Promise<void> {
+  const settingsService = new SettingsService({
+    schema: this.schema,
+    knex: this.knex,
+  });
+  
+  const { auth_password_policy: policyRegExString } = await settingsService.readSingleton({
+    fields: ['auth_password_policy'],
+  });
+  
+  if (!policyRegExString) {
+    return;
+  }
+  
+  const wrapped = policyRegExString.startsWith('/') && policyRegExString.endsWith('/');
+  const regex = new RegExp(wrapped ? policyRegExString.slice(1, -1) : policyRegExString);
+  
+  for (const password of passwords) {
+    if (!regex.test(password)) {
+      throw new FailedValidationError({
+        message: `Provided password doesn't match password policy`,
+        path: ['password'],
+        type: 'custom.pattern.base',
+      });
+    }
+  }
+}
+```
+
+## User Status
+
+Users can have different statuses:
+
+### Active
+
+```json
+{ "status": "active" }
+```
+
+Fully functional account that can authenticate and access the system.
+
+### Invited
+
+```json
+{ "status": "invited" }
+```
+
+User has been invited but hasn't completed registration.
+
+### Draft
+
+```json
+{ "status": "draft" }
+```
+
+User account exists but is not yet active.
+
+### Suspended
+
+```json
+{ "status": "suspended" }
+```
+
+Account is temporarily disabled and cannot authenticate.
+
+<Warning>
+Suspended users cannot log in and their sessions are invalidated.
+</Warning>
+
+## Inviting Users
+
+Send invitation emails to new users:
+
+```http
+POST /users/invite
+Content-Type: application/json
+
+{
+  "email": "newuser@example.com",
+  "role": "editor-role-id",
+  "invite_url": "https://yourdomain.com/admin/accept-invite"
+}
+```
+
+From the source code (`~/workspace/source/api/src/services/users.ts:153-164`), the invitation process:
+
+1. Creates a user with `status: invited`
+2. Generates a JWT token with email and `scope: invite`
+3. Sends invitation email with acceptance link
+4. Token expires based on `USER_INVITE_TOKEN_TTL` setting
+
+## What are Roles?
+
+Roles are groups that define shared permissions and access levels. Users are assigned to roles, which in turn are associated with policies containing permissions.
+
+```
+User → Role → Policies → Permissions
+```
+
+## Role Structure
+
+```typescript
+// Stored in directus_roles collection
+{
+  id: string;              // Unique identifier
+  name: string;            // Role display name
+  icon: string;            // Icon identifier
+  description: string;     // Role description
+  ip_access: string[];     // Allowed IP addresses
+  enforce_tfa: boolean;    // Require two-factor authentication
+  admin_access: boolean;   // Grant full admin access
+  app_access: boolean;     // Allow access to admin app
+  parent: string | null;   // Parent role for inheritance
+}
+```
+
+### Admin Roles
+
+Roles with `admin_access: true` bypass all permission checks:
+
+```json
+{
+  "id": "admin-role",
+  "name": "Administrator",
+  "admin_access": true,
+  "app_access": true
+}
+```
+
+<Info>
+Admin users have unrestricted access to all collections, fields, and items. Use this carefully.
+</Info>
+
+### App Access
+
+Roles with `app_access: true` can access the Directus admin application:
+
+```json
+{
+  "id": "editor-role",
+  "name": "Editor",
+  "app_access": true,
+  "admin_access": false
+}
+```
+
+Roles without app access can only use the API.
+
+## Creating Roles
+
+```http
+POST /roles
+Content-Type: application/json
+
+{
+  "name": "Content Editor",
+  "icon": "edit",
+  "description": "Can create and edit content",
+  "admin_access": false,
+  "app_access": true
+}
+```
+
+From the source code (`~/workspace/source/api/src/services/roles.ts:13-19`), role creation is straightforward but changes to roles trigger cache clearing and user integrity checks.
+
+## Role Inheritance
+
+Roles can inherit from parent roles:
+
+```json
+{
+  "id": "senior-editor",
+  "name": "Senior Editor",
+  "parent": "editor-role"
+}
+```
+
+From the source code (`~/workspace/source/api/src/services/roles.ts:108-119`), role nesting is validated to prevent circular references:
+
+```typescript
+private async validateRoleNesting(ids: string[], parent: string) {
+  if (ids.includes(parent)) {
+    throw new InvalidPayloadError({ 
+      reason: 'A role cannot be a parent of itself' 
+    });
+  }
+  
+  const roles = await fetchRolesTree(parent, { knex: this.knex });
+  
+  if (ids.some((id) => roles.includes(id))) {
+    throw new InvalidPayloadError({ 
+      reason: 'A role cannot have a parent that is already a descendant of itself' 
+    });
+  }
+}
+```
+
+## Policies and Access
+
+Roles are linked to policies through the `directus_access` collection:
+
+```json
+{
+  "id": 1,
+  "role": "editor-role",
+  "policy": "editor-policy",
+  "sort": 1
+}
+```
+
+Multiple policies can be assigned to a single role, with permissions merged from all policies.
+
+## Deleting Roles
+
+From the source code (`~/workspace/source/api/src/services/roles.ts:46-106`), deleting a role:
+
+1. Deletes all permissions associated with the role's policies
+2. Deletes all presets for the role
+3. Suspends all users assigned to the role
+4. Sets users' role to NULL
+5. Updates child roles to remove parent reference
+
+```typescript
+override async deleteMany(keys: PrimaryKey[], opts: MutationOptions = {}): Promise<PrimaryKey[]> {
+  opts.userIntegrityCheckFlags = UserIntegrityCheckFlag.All;
+  
+  await transaction(this.knex, async (trx) => {
+    // Delete permissions for this role
+    await accessService.deleteByQuery(
+      { filter: { role: { _in: keys } } },
+      { ...opts, bypassLimits: true },
+    );
+    
+    // Delete presets for this role
+    await presetsService.deleteByQuery(
+      { filter: { role: { _in: keys } } },
+      { ...opts, bypassLimits: true },
+    );
+    
+    // Suspend users in role
+    await usersService.updateByQuery(
+      { filter: { role: { _in: keys } } },
+      { status: 'suspended', role: null },
+      { ...opts, bypassLimits: true },
+    );
+    
+    // Clear parent references
+    await rolesService.updateByQuery(
+      { filter: { parent: { _in: keys } } },
+      { parent: null },
+    );
+    
+    await rolesItemsService.deleteMany(keys, opts);
+  });
+  
+  return keys;
+}
+```
+
+<Warning>
+Deleting a role suspends all users assigned to it. Reassign users to different roles before deletion to maintain their access.
+</Warning>
+
+## Authentication Providers
+
+Users can authenticate through multiple providers:
+
+### Default Provider
+
+```json
+{
+  "email": "user@example.com",
+  "password": "password",
+  "provider": "default"
+}
+```
+
+Standard email/password authentication.
+
+### LDAP Provider
+
+```json
+{
+  "email": "user@company.com",
+  "provider": "ldap"
+}
+```
+
+### OAuth Providers
+
+```json
+{
+  "email": "user@gmail.com",
+  "provider": "google"
+}
+```
+
+Supported OAuth providers: Google, GitHub, Facebook, etc.
+
+## Two-Factor Authentication
+
+### Enabling TFA
+
+```http
+POST /users/me/tfa/enable
+Content-Type: application/json
+
+{
+  "password": "current-password"
+}
+```
+
+Returns a QR code and secret for authenticator apps.
+
+### Enforcing TFA
+
+Roles can require TFA for all users:
+
+```json
+{
+  "id": "admin-role",
+  "name": "Administrator",
+  "enforce_tfa": true
+}
+```
+
+## IP Access Restrictions
+
+Limit role access to specific IP addresses:
+
+```json
+{
+  "id": "admin-role",
+  "ip_access": [
+    "192.168.1.0/24",
+    "10.0.0.1"
+  ]
+}
+```
+
+## User Sessions
+
+From the source code (`~/workspace/source/api/src/services/users.ts:123-133`), user sessions can be cleared:
+
+```typescript
+private async clearUserSessions(userKeys: PrimaryKey[], excludeSession?: string): Promise<void> {
+  if (excludeSession) {
+    await this.knex
+      .from('directus_sessions')
+      .whereIn('user', userKeys)
+      .andWhereNot('token', '=', excludeSession)
+      .delete();
+  } else {
+    await this.knex
+      .from('directus_sessions')
+      .whereIn('user', userKeys)
+      .delete();
+  }
+}
+```
+
+This is useful for:
+- Forcing users to re-authenticate
+- Security incidents
+- Role/permission changes
+
+## Common Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Content Team" icon="users">
+    Create Editor, Reviewer, and Publisher roles with progressive permissions for content workflows.
+  </Card>
+  
+  <Card title="API Clients" icon="key">
+    Set up API-only roles without app access for external system integrations.
+  </Card>
+  
+  <Card title="Department Access" icon="building">
+    Create department-specific roles with conditional permissions based on user attributes.
+  </Card>
+  
+  <Card title="Customer Portal" icon="users">
+    Build customer-facing roles with limited access to their own data and public content.
+  </Card>
+</CardGroup>
+
+## Best Practices
+
+<Tip>
+**Unique Email Addresses**: Ensure email addresses are unique across all users, even with different casing.
+</Tip>
+
+<Tip>
+**Strong Password Policies**: Configure password policies in settings to enforce complexity requirements.
+</Tip>
+
+<Tip>
+**Role-Based Design**: Design roles based on job functions rather than individual users for easier management.
+</Tip>
+
+<Tip>
+**Minimal Admin Accounts**: Limit the number of users with admin access to reduce security risks.
+</Tip>
+
+<Tip>
+**Enable TFA**: Require two-factor authentication for sensitive roles like administrators.
+</Tip>
+
+<Tip>
+**Regular Audits**: Periodically review user accounts and roles to remove inactive users and update permissions.
+</Tip>
+
+## Related Concepts
+
+- **[Permissions](/core-concepts/permissions)** - Access control rules assigned to roles
+- **[Collections](/core-concepts/collections)** - Data that users and roles can access
+- **[Items](/core-concepts/items)** - Records that users create and manage

@@ -1,0 +1,284 @@
+---
+title: Supported Databases
+description: Learn about the database systems supported by Directus and their specific requirements and features.
+---
+
+Directus supports multiple SQL database systems, allowing you to choose the database that best fits your infrastructure and requirements. All database interactions are handled through Knex.js, providing a unified query builder interface across different database vendors.
+
+## Supported Database Systems
+
+Directus officially supports the following database systems:
+
+### PostgreSQL
+
+**Driver:** `pg` (node-postgres)
+
+PostgreSQL is a powerful, open-source object-relational database system with a strong reputation for reliability, feature robustness, and performance.
+
+**Configuration:**
+
+```env
+DB_CLIENT='pg'
+DB_HOST='localhost'
+DB_PORT=5432
+DB_DATABASE='directus'
+DB_USER='postgres'
+DB_PASSWORD='your_password'
+```
+
+**Connection String (Alternative):**
+
+```env
+DB_CLIENT='pg'
+DB_CONNECTION_STRING='postgresql://user:password@localhost:5432/directus'
+```
+
+**Features:**
+- Full geometry support via PostGIS extension
+- Advanced search capabilities
+- JSON/JSONB field support
+- Generated columns support (PostgreSQL 12+)
+- Custom search paths for schema isolation
+
+**Optional Extensions:**
+- **PostGIS** - Enables geometry type support (Point, Polygon, etc.)
+- Install: `CREATE EXTENSION IF NOT EXISTS postgis;`
+
+### MySQL / MariaDB
+
+**Driver:** `mysql2`
+
+MySQL and MariaDB are popular open-source relational database management systems known for their speed and ease of use.
+
+**Configuration:**
+
+```env
+DB_CLIENT='mysql'
+DB_HOST='localhost'
+DB_PORT=3306
+DB_DATABASE='directus'
+DB_USER='root'
+DB_PASSWORD='your_password'
+```
+
+**Unix Socket Connection:**
+
+```env
+DB_CLIENT='mysql'
+DB_DATABASE='directus'
+DB_USER='root'
+DB_PASSWORD='your_password'
+DB_SOCKET_PATH='/var/run/mysqld/mysqld.sock'
+```
+
+**Features:**
+- Boolean type mapping (tinyint(1))
+- InnoDB engine for ACID compliance
+- Collation and charset configuration
+- Auto-increment primary keys
+
+**Important Notes:**
+- Directus uses `mysql2` driver internally when `DB_CLIENT='mysql'` is set
+- Recommended collation: `utf8mb4_unicode_ci` or `utf8mb4_0900_ai_ci`
+- Transactions with DDL statements are automatically committed
+
+### SQLite
+
+**Driver:** `sqlite3`
+
+SQLite is a lightweight, serverless, self-contained SQL database engine ideal for development and embedded applications.
+
+**Configuration:**
+
+```env
+DB_CLIENT='sqlite3'
+DB_FILENAME='/path/to/database.db'
+```
+
+**Features:**
+- Zero-configuration
+- Single-file database
+- Foreign key support (enabled automatically)
+- Limited geometry support via Spatialite extension
+
+**Important Notes:**
+- SQLite automatically uses `NULL` as default for unspecified values
+- Best suited for development, testing, or low-concurrency applications
+- Not recommended for production deployments with multiple concurrent users
+
+**Optional Extensions:**
+- **Spatialite** - Enables geometry type support (limited)
+
+### Microsoft SQL Server
+
+**Driver:** `tedious`
+
+Microsoft SQL Server is an enterprise-grade relational database management system.
+
+**Configuration:**
+
+```env
+DB_CLIENT='mssql'
+DB_HOST='localhost'
+DB_PORT=1433
+DB_DATABASE='directus'
+DB_USER='sa'
+DB_PASSWORD='your_password'
+```
+
+**Features:**
+- Enterprise scalability
+- UTC timezone handling disabled by default (aligned with other vendors)
+- Auto-increment via IDENTITY columns
+
+**Important Notes:**
+- Directus sets `useUTC: false` to maintain consistency with other database vendors
+- No automatic timezone conversion on database level
+
+### Oracle Database
+
+**Driver:** `oracledb`
+
+Oracle Database is a multi-model database management system produced by Oracle Corporation.
+
+**Configuration (Standard):**
+
+```env
+DB_CLIENT='oracledb'
+DB_HOST='localhost'
+DB_PORT=1521
+DB_DATABASE='XEPDB1'
+DB_USER='system'
+DB_PASSWORD='your_password'
+```
+
+**Configuration (Connect String):**
+
+```env
+DB_CLIENT='oracledb'
+DB_USER='system'
+DB_PASSWORD='your_password'
+DB_CONNECT_STRING='localhost:1521/XEPDB1'
+```
+
+**Features:**
+- Enterprise-grade performance and scalability
+- Date and timestamp formatting enforced to ISO standards
+- Session-level configuration for consistent date/time handling
+
+**Important Notes:**
+- Directus enforces ISO date format: `YYYY-MM-DD`
+- Timestamp format: `YYYY-MM-DD"T"HH24:MI:SS.FF3"Z"`
+- Different query syntax for testing connection: `SELECT 1 FROM DUAL`
+
+### CockroachDB
+
+**Driver:** `pg` (PostgreSQL-compatible)
+
+CockroachDB is a distributed SQL database built for cloud-native applications with PostgreSQL compatibility.
+
+**Configuration:**
+
+```env
+DB_CLIENT='cockroachdb'
+DB_HOST='localhost'
+DB_PORT=26257
+DB_DATABASE='directus'
+DB_USER='root'
+```
+
+**Connection String:**
+
+```env
+DB_CLIENT='cockroachdb'
+DB_CONNECTION_STRING='postgresql://root@localhost:26257/directus?sslmode=disable'
+```
+
+**Features:**
+- Horizontal scalability
+- PostgreSQL wire protocol compatibility
+- Built-in replication and fault tolerance
+- Automatic serial normalization to SQL sequences
+
+**Important Notes:**
+- Directus automatically sets `serial_normalization = "sql_sequence"`
+- Default integer size set to 4 bytes for consistency
+- Fully PostgreSQL-compatible for most operations
+
+## Database Client Detection
+
+Directus detects the database client based on the Knex client constructor name:
+
+| Environment Value | Knex Client | Database Vendor |
+|-------------------|-------------|------------------|
+| `pg` | `Client_PG` | PostgreSQL |
+| `mysql` | `Client_MySQL2` | MySQL/MariaDB |
+| `sqlite3` | `Client_SQLite3` | SQLite |
+| `mssql` | `Client_MSSQL` | Microsoft SQL Server |
+| `oracledb` | `Client_Oracledb` or `Client_Oracle` | Oracle Database |
+| `cockroachdb` | `Client_CockroachDB` | CockroachDB |
+
+## Connection Pooling
+
+All database connections use connection pooling for optimal performance. Configure pool settings using environment variables:
+
+```env
+DB_POOL_MIN=0
+DB_POOL_MAX=10
+```
+
+**Pool Configuration Options:**
+
+- `DB_POOL_MIN` - Minimum number of connections in the pool (default: 0)
+- `DB_POOL_MAX` - Maximum number of connections in the pool (default: 10)
+- `DB_POOL_IDLE_TIMEOUT` - Time (ms) a connection can be idle before being released
+- `DB_POOL_ACQUIRE_TIMEOUT` - Time (ms) to wait for a connection before timing out
+
+## Database Validation
+
+### Connection Validation
+
+Directus validates database connectivity on startup using:
+
+```sql
+SELECT 1
+```
+
+For Oracle Database:
+
+```sql
+SELECT 1 FROM DUAL
+```
+
+### Charset Validation (MySQL)
+
+For MySQL databases, Directus validates that tables and columns use the database's default collation. Inconsistencies are logged as warnings but don't prevent startup.
+
+Exclude specific tables from validation:
+
+```env
+DB_EXCLUDE_TABLES='legacy_table1,legacy_table2'
+```
+
+## Choosing a Database
+
+**For Development:**
+- SQLite - Quick setup, zero configuration
+
+**For Production (Small to Medium):**
+- PostgreSQL - Feature-rich, excellent performance
+- MySQL/MariaDB - Fast, widely supported
+
+**For Production (Enterprise):**
+- PostgreSQL - Advanced features, robust performance
+- Microsoft SQL Server - Enterprise support, Windows integration
+- Oracle Database - Mission-critical applications
+
+**For Production (Distributed/Cloud-Native):**
+- CockroachDB - Horizontal scalability, automatic replication
+- PostgreSQL with replication - Proven reliability
+
+## Next Steps
+
+- Learn about [Schema Management](/database/schema-management)
+- Understand [Database Migrations](/database/migrations)

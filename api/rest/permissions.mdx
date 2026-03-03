@@ -1,0 +1,108 @@
+---
+title: Permissions
+description: Manage role permissions
+---
+
+Permissions control what actions roles can perform on collections.
+
+## List Permissions
+
+```bash
+GET /permissions
+```
+
+**Example:**
+
+```bash
+curl "https://your-directus-instance.com/permissions" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+## Get Permission
+
+```bash
+GET /permissions/:id
+```
+
+## Create Permission
+
+```bash
+POST /permissions
+```
+
+**Request Body:**
+
+```json
+{
+  "role": "role-uuid",
+  "collection": "articles",
+  "action": "read",
+  "permissions": {
+    "status": {
+      "_eq": "published"
+    }
+  },
+  "fields": ["*"]
+}
+```
+
+## Permission Actions
+
+- `create` - Create new items
+- `read` - Read items
+- `update` - Update items
+- `delete` - Delete items
+- `share` - Share items
+
+## Update Permission
+
+```bash
+PATCH /permissions/:id
+```
+
+## Delete Permission
+
+```bash
+DELETE /permissions/:id
+```
+
+## Permission Properties
+
+<ResponseField name="id" type="integer">
+  Permission ID
+</ResponseField>
+
+<ResponseField name="role" type="string">
+  Role UUID (null for public)
+</ResponseField>
+
+<ResponseField name="collection" type="string">
+  Collection name
+</ResponseField>
+
+<ResponseField name="action" type="string">
+  Permission action
+</ResponseField>
+
+<ResponseField name="permissions" type="object">
+  Filter rules (null for all items)
+</ResponseField>
+
+<ResponseField name="validation" type="object">
+  Validation rules
+</ResponseField>
+
+<ResponseField name="fields" type="array">
+  Allowed fields
+</ResponseField>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Roles" icon="user-shield" href="/api/rest/roles">
+    Manage roles
+  </Card>
+  <Card title="Users" icon="users" href="/api/rest/users">
+    Manage users
+  </Card>
+</CardGroup>

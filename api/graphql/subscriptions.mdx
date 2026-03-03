@@ -1,0 +1,674 @@
+---
+title: 'GraphQL Subscriptions'
+description: 'Real-time updates using GraphQL subscriptions over WebSockets'
+---
+
+## Introduction
+
+Directus supports GraphQL subscriptions for real-time updates when items are created, updated, or deleted in your collections. Subscriptions use WebSockets to maintain a persistent connection and push updates to clients as they happen.
+
+<Note>
+  GraphQL subscriptions are only available for item collections on the `/graphql` endpoint, not for system collections.
+</Note>
+
+## WebSocket Endpoint
+
+Subscriptions connect via WebSocket:
+
+```
+ws://your-directus-instance.com/graphql
+wss://your-directus-instance.com/graphql
+```
+
+<Info>
+  Use `wss://` for secure connections (HTTPS sites) and `ws://` for local development.
+</Info>
+
+## Configuration
+
+Enable GraphQL subscriptions via WebSockets with environment variables:
+
+### Enable GraphQL Subscriptions
+
+```bash
+WEBSOCKETS_ENABLED=true
+WEBSOCKETS_GRAPHQL_ENABLED=true
+```
+
+### Authentication Modes
+
+Configure how clients authenticate:
+
+```bash
+# Options: strict, handshake, public
+WEBSOCKETS_GRAPHQL_AUTH=handshake
+```
+
+**Authentication Modes:**
+
+- **`strict`**: Clients must authenticate before connecting (via URL or headers)
+- **`handshake`**: Clients authenticate during connection initialization
+- **`public`**: No authentication required (for public data only)
+
+### Authentication Timeout
+
+Set timeout for handshake authentication:
+
+```bash
+WEBSOCKETS_GRAPHQL_AUTH_TIMEOUT=10000
+```
+
+### Custom WebSocket Path
+
+```bash
+WEBSOCKETS_GRAPHQL_PATH=/graphql
+```
+
+## Subscription Types
+
+For each collection, Directus generates a subscription:
+
+```
+<collection>_mutated
+```
+
+This subscription fires when items are created, updated, or deleted.
+
+## Basic Subscription
+
+Subscribe to all mutations on a collection:
+
+```graphql
+subscription {
+  articles_mutated {
+    key
+    event
+    data {
+      id
+      title
+      status
+    }
+  }
+}
+```
+
+**Response Fields:**
+
+- `key`: The ID of the affected item
+- `event`: The mutation type (`create`, `update`, or `delete`)
+- `data`: The item data (null for delete events)
+
+## Filter by Event Type
+
+Subscribe only to specific event types:
+
+```graphql
+subscription {
+  articles_mutated(event: "create") {
+    key
+    event
+    data {
+      id
+      title
+      created_at
+    }
+  }
+}
+```
+
+**Available Events:**
+
+- `create`: Item was created
+- `update`: Item was updated
+- `delete`: Item was deleted
+
+## Subscribe to Specific Fields
+
+Request only the fields you need:
+
+```graphql
+subscription {
+  articles_mutated {
+    key
+    event
+    data {
+      title
+      status
+      updated_at
+    }
+  }
+}
+```
+
+## Subscribe with Relationships
+
+Include related data in subscription updates:
+
+```graphql
+subscription {
+  articles_mutated {
+    key
+    event
+    data {
+      id
+      title
+      author {
+        id
+        name
+      }
+      categories {
+        categories_id {
+          id
+          name
+        }
+      }
+    }
+  }
+}
+```
+
+## Authentication
+
+### Handshake Authentication
+
+Authenticate during connection initialization:
+
+```javascript
+import { createClient } from 'graphql-ws';
+
+const client = createClient({
+  url: 'wss://your-directus-instance.com/graphql',
+  connectionParams: {
+    access_token: 'your-access-token',
+  },
+});
+```
+
+### Strict Authentication
+
+Authenticate via URL parameters:
+
+```javascript
+const client = createClient({
+  url: 'wss://your-directus-instance.com/graphql?access_token=your-token',
+});
+```
+
+## Client Implementation
+
+### Using graphql-ws
+
+```javascript
+import { createClient } from 'graphql-ws';
+
+const client = createClient({
+  url: 'wss://your-directus-instance.com/graphql',
+  connectionParams: {
+    access_token: 'your-access-token',
+  },
+});
+
+const subscription = client.iterate({
+  query: `
+    subscription {
+      articles_mutated {
+        key
+        event
+        data {
+          id
+          title
+          status
+        }
+      }
+    }
+  `,
+});
+
+(async () => {
+  for await (const result of subscription) {
+    console.log('Update received:', result);
+  }
+})();
+```
+
+### Using Apollo Client
+
+```javascript
+import { ApolloClient, InMemoryCache, split, HttpLink } from '@apollo/client';
+import { GraphQLWsLink } from '@apollo/client/link/subscriptions';
+import { getMainDefinition } from '@apollo/client/utilities';
+import { createClient } from 'graphql-ws';
+
+const httpLink = new HttpLink({
+  uri: 'https://your-directus-instance.com/graphql',
+  headers: {
+    authorization: `Bearer ${token}`,
+  },
+});
+
+const wsLink = new GraphQLWsLink(
+  createClient({
+    url: 'wss://your-directus-instance.com/graphql',
+    connectionParams: {
+      access_token: token,
+    },
+  })
+);
+
+const splitLink = split(
+  ({ query }) => {
+    const definition = getMainDefinition(query);
+    return (
+      definition.kind === 'OperationDefinition' &&
+      definition.operation === 'subscription'
+    );
+  },
+  wsLink,
+  httpLink
+);
+
+const client = new ApolloClient({
+  link: splitLink,
+  cache: new InMemoryCache(),
+});
+```
+
+### Using the Directus SDK
+
+```javascript
+import { createDirectus, graphql, realtime } from '@directus/sdk';
+
+const client = createDirectus('https://your-directus-instance.com')
+  .with(graphql())
+  .with(realtime());
+
+await client.connect();
+
+const { subscription } = await client.subscribe(
+  `
+    subscription {
+      articles_mutated {
+        key
+        event
+        data {
+          id
+          title
+        }
+      }
+    }
+  `
+);
+
+for await (const message of subscription) {
+  console.log('Received:', message);
+}
+```
+
+## Subscription Events
+
+### Create Event
+
+Fired when an item is created:
+
+```json
+{
+  "data": {
+    "articles_mutated": {
+      "key": "abc-123",
+      "event": "create",
+      "data": {
+        "id": "abc-123",
+        "title": "New Article",
+        "status": "draft"
+      }
+    }
+  }
+}
+```
+
+### Update Event
+
+Fired when an item is updated:
+
+```json
+{
+  "data": {
+    "articles_mutated": {
+      "key": "abc-123",
+      "event": "update",
+      "data": {
+        "id": "abc-123",
+        "title": "Updated Article",
+        "status": "published"
+      }
+    }
+  }
+}
+```
+
+### Delete Event
+
+Fired when an item is deleted:
+
+```json
+{
+  "data": {
+    "articles_mutated": {
+      "key": "abc-123",
+      "event": "delete",
+      "data": null
+    }
+  }
+}
+```
+
+<Note>
+  Delete events don't include item data, only the `key` (ID) of the deleted item.
+</Note>
+
+## Permission Handling
+
+Subscriptions respect user permissions:
+
+- Users only receive updates for items they have read access to
+- If permissions change and a user loses access, they won't receive further updates
+- Permission errors are silently ignored (no notification sent)
+
+## Using Variables
+
+Use variables to make subscriptions dynamic:
+
+```graphql
+subscription ArticleUpdates($event: String) {
+  articles_mutated(event: $event) {
+    key
+    event
+    data {
+      id
+      title
+      status
+    }
+  }
+}
+```
+
+Variables:
+
+```json
+{
+  "event": "update"
+}
+```
+
+## Connection Lifecycle
+
+### Connection States
+
+1. **Connecting**: Establishing WebSocket connection
+2. **Connected**: Connection established, can subscribe
+3. **Reconnecting**: Lost connection, attempting to reconnect
+4. **Disconnected**: Connection closed
+
+### Handling Connection Errors
+
+```javascript
+import { createClient } from 'graphql-ws';
+
+const client = createClient({
+  url: 'wss://your-directus-instance.com/graphql',
+  connectionParams: {
+    access_token: token,
+  },
+  on: {
+    connected: () => console.log('Connected'),
+    error: (error) => console.error('Connection error:', error),
+    closed: () => console.log('Connection closed'),
+  },
+});
+```
+
+### Auto-Reconnection
+
+Most GraphQL clients handle reconnection automatically. Configure retry behavior:
+
+```javascript
+const client = createClient({
+  url: 'wss://your-directus-instance.com/graphql',
+  retryAttempts: 10,
+  retryWait: async (retries) => {
+    await new Promise((resolve) => 
+      setTimeout(resolve, Math.min(1000 * 2 ** retries, 10000))
+    );
+  },
+});
+```
+
+## Complete Example
+
+Here's a full example of using subscriptions in a React application:
+
+```javascript
+import React, { useEffect, useState } from 'react';
+import { createClient } from 'graphql-ws';
+
+const client = createClient({
+  url: 'wss://your-directus-instance.com/graphql',
+  connectionParams: {
+    access_token: 'your-token',
+  },
+});
+
+function ArticleSubscription() {
+  const [articles, setArticles] = useState([]);
+  const [updates, setUpdates] = useState([]);
+
+  useEffect(() => {
+    const subscription = client.iterate({
+      query: `
+        subscription {
+          articles_mutated {
+            key
+            event
+            data {
+              id
+              title
+              status
+              updated_at
+            }
+          }
+        }
+      `,
+    });
+
+    (async () => {
+      for await (const result of subscription) {
+        const { key, event, data } = result.data.articles_mutated;
+
+        setUpdates(prev => [
+          { key, event, timestamp: new Date() },
+          ...prev.slice(0, 9)
+        ]);
+
+        if (event === 'create') {
+          setArticles(prev => [data, ...prev]);
+        } else if (event === 'update') {
+          setArticles(prev => 
+            prev.map(article => 
+              article.id === key ? data : article
+            )
+          );
+        } else if (event === 'delete') {
+          setArticles(prev => 
+            prev.filter(article => article.id !== key)
+          );
+        }
+      }
+    })();
+
+    return () => {
+      subscription.return?.();
+    };
+  }, []);
+
+  return (
+    <div>
+      <h2>Live Articles</h2>
+      <ul>
+        {articles.map(article => (
+          <li key={article.id}>
+            {article.title} - {article.status}
+          </li>
+        ))}
+      </ul>
+
+      <h3>Recent Updates</h3>
+      <ul>
+        {updates.map((update, i) => (
+          <li key={i}>
+            {update.event} - {update.key} at {update.timestamp.toLocaleTimeString()}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export default ArticleSubscription;
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Only Subscribe to Needed Fields">
+    Request only the fields you need to reduce bandwidth:
+
+    ```graphql
+    # Good - minimal fields
+    subscription {
+      articles_mutated {
+        key
+        event
+        data {
+          title
+          status
+        }
+      }
+    }
+
+    # Avoid - unnecessary fields
+    subscription {
+      articles_mutated {
+        key
+        event
+        data {
+          id
+          title
+          content
+          author { id name email bio }
+          created_at
+          updated_at
+        }
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Filter by Event Type">
+    If you only need specific events, filter them:
+
+    ```graphql
+    # Only listen for new items
+    subscription {
+      articles_mutated(event: "create") {
+        key
+        data { title }
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Handle Reconnection">
+    Always implement reconnection logic for production:
+
+    ```javascript
+    const client = createClient({
+      url: 'wss://your-instance.com/graphql',
+      retryAttempts: Infinity,
+      shouldRetry: () => true,
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Clean Up Subscriptions">
+    Always clean up subscriptions when components unmount:
+
+    ```javascript
+    useEffect(() => {
+      const unsubscribe = subscribe({ query });
+      return () => unsubscribe();
+    }, []);
+    ```
+  </Accordion>
+
+  <Accordion title="Handle Delete Events">
+    Remember that delete events don't include data:
+
+    ```javascript
+    if (event === 'delete') {
+      // Only 'key' is available, 'data' is null
+      removeItem(key);
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Connection Refused">
+    Ensure WebSockets are enabled:
+    
+    ```bash
+    WEBSOCKETS_ENABLED=true
+    WEBSOCKETS_GRAPHQL_ENABLED=true
+    ```
+  </Accordion>
+
+  <Accordion title="Authentication Errors">
+    Check your authentication mode and token:
+    
+    ```javascript
+    // For handshake mode
+    connectionParams: {
+      access_token: 'your-valid-token'
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="No Updates Received">
+    Verify:
+    - User has read permissions for the collection
+    - Subscription query syntax is correct
+    - WebSocket connection is established
+  </Accordion>
+
+  <Accordion title="Connection Timeout">
+    Increase the authentication timeout:
+    
+    ```bash
+    WEBSOCKETS_GRAPHQL_AUTH_TIMEOUT=30000
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="GraphQL Queries" icon="magnifying-glass" href="/api/graphql/queries">
+    Learn how to query your data
+  </Card>
+  
+  <Card title="GraphQL Mutations" icon="pen-to-square" href="/api/graphql/mutations">
+    Create, update, and delete data
+  </Card>
+</CardGroup>

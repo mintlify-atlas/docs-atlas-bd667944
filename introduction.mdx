@@ -1,0 +1,194 @@
+---
+title: Introduction to Directus
+description: Directus is a real-time API and App dashboard for managing SQL database content. Get started with the most flexible headless CMS and data platform.
+---
+
+<p align="center">
+  <img alt="Directus Logo" src="https://user-images.githubusercontent.com/522079/158864859-0fbeae62-9d7a-4619-b35e-f8fa5f68e0c8.png" width="200" />
+</p>
+
+# Introduction to Directus
+
+Directus is a real-time API and App dashboard for managing SQL database content. Built on Node.js, it instantly layers a blazingly fast API on top of any SQL database, providing a beautiful no-code dashboard for managing your data.
+
+## What is Directus?
+
+Directus wraps your database with a dynamic API and provides an intuitive admin app for managing content. It works with new or existing SQL databases, requiring no migration.
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get up and running with Directus in under 5 minutes
+  </Card>
+  <Card title="Installation Guide" icon="download" href="/installation">
+    Detailed installation instructions for Docker, npm, and pnpm
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/rest">
+    Explore the REST and GraphQL API endpoints
+  </Card>
+  <Card title="SDK Documentation" icon="book" href="/sdk">
+    Learn how to use the TypeScript SDK for API clients
+  </Card>
+</CardGroup>
+
+## Key Features
+
+<AccordionGroup>
+  <Accordion title="REST & GraphQL API" icon="network-wired">
+    Directus automatically generates a complete REST and GraphQL API on top of your SQL database. The API is:
+    - **Blazingly fast** - Built on Node.js with optimized queries
+    - **Real-time** - WebSocket support for live data updates
+    - **Fully documented** - Auto-generated OpenAPI specifications
+    - **Extensible** - Custom endpoints and middleware support
+  </Accordion>
+
+  <Accordion title="Works with Any SQL Database" icon="database">
+    Directus supports all major SQL databases out of the box:
+    - **PostgreSQL** - Full support including PostGIS for geospatial data
+    - **MySQL** - Versions 5.7+ and 8.x
+    - **SQLite** - Perfect for development and small deployments
+    - **MariaDB** - Full compatibility
+    - **MS SQL Server** - Enterprise database support
+    - **OracleDB** - Oracle database integration
+    - **CockroachDB** - Distributed SQL database support
+  </Accordion>
+
+  <Accordion title="No-Code Dashboard" icon="table-columns">
+    A modern Vue.js dashboard that's safe and intuitive for non-technical users:
+    - **No training required** - Clean, intuitive interface
+    - **45+ field interfaces** - Rich input types for every data type
+    - **21 display renderers** - Beautiful data visualization
+    - **8 layout views** - Table, cards, calendar, map, and more
+    - **Fully customizable** - White-label and extend with custom components
+  </Accordion>
+
+  <Accordion title="Completely Extensible" icon="puzzle-piece">
+    Built to white-label and customize:
+    - **Custom interfaces** - Create your own field input types
+    - **Custom layouts** - Build unique data views
+    - **Custom endpoints** - Add your own API routes
+    - **Hooks & operations** - Extend business logic with flows
+    - **Storage drivers** - Support for S3, Azure, GCS, Cloudinary, and more
+  </Accordion>
+
+  <Accordion title="On-Premises or Cloud" icon="cloud">
+    Deploy Directus anywhere:
+    - **Self-hosted** - Full control over your infrastructure
+    - **Docker** - Easy containerized deployment
+    - **Directus Cloud** - Managed hosting starting at $15/month
+    - **One-click deploy** - Railway, and other platforms
+  </Accordion>
+
+  <Accordion title="Enterprise-Ready" icon="building">
+    Production-ready features:
+    - **Authentication** - Local, OAuth, LDAP, SAML, OpenID support
+    - **Granular permissions** - Role-based access control
+    - **Rate limiting** - Built-in protection and quotas
+    - **Caching** - Redis integration for performance
+    - **Webhooks & flows** - Automation and integrations
+    - **Audit logs** - Complete activity tracking
+  </Accordion>
+</AccordionGroup>
+
+## Architecture
+
+Directus is a pnpm monorepo containing:
+
+- **`@directus/api`** - Node.js backend with REST & GraphQL APIs (Express.js, Knex.js)
+- **`@directus/app`** - Vue 3 dashboard application (Vite, Pinia)
+- **`@directus/sdk`** - TypeScript SDK for Directus API clients
+- **35+ shared packages** - Types, utilities, storage drivers, extensions, and more
+
+## Requirements
+
+<CardGroup cols={2}>
+  <Card title="Node.js" icon="node-js">
+    **Node.js 22 or higher** is required to run Directus
+  </Card>
+  <Card title="Database" icon="database">
+    Any supported **SQL database**: PostgreSQL, MySQL, SQLite, MariaDB, MS SQL, Oracle, or CockroachDB
+  </Card>
+</CardGroup>
+
+## Deployment Options
+
+<Tabs>
+  <Tab title="Directus Cloud">
+    The fastest way to get started. [Directus Cloud](https://directus.cloud) offers:
+    - **90-second provisioning** - Create projects instantly
+    - **Everything included** - Database, storage, auto-scaling, CDN
+    - **Global regions** - Choose your deployment location
+    - **Starting at $15/month** - Managed by the Directus team
+
+    [Create a Directus Cloud Project →](https://directus.cloud)
+  </Tab>
+
+  <Tab title="Railway">
+    Deploy Directus with a single click via Railway:
+    - **Fully provisioned** - PostgreSQL, Redis, S3-compatible storage
+    - **Private network** - Secure, zero-egress communication
+    - **Auto-scaling** - Handles traffic spikes automatically
+
+    [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/directus-official?referralCode=b2RDZT&utm_medium=integration&utm_source=template&utm_campaign=generic)
+  </Tab>
+
+  <Tab title="Self-Hosted">
+    Full control with self-hosting:
+    - **Docker** - Containerized deployment (recommended)
+    - **npm/pnpm** - Direct installation on your server
+    - **PM2** - Process management for production
+
+    See the [Installation Guide](/installation) for detailed instructions.
+  </Tab>
+</Tabs>
+
+## License
+
+Directus is licensed under the [Business Source License (BSL) 1.1](https://github.com/directus/directus/blob/main/license) with a permissive additional use grant.
+
+<Info>
+  **Free for most users**: If your organization has less than $5M in annual revenue and/or funding combined, you can use Directus freely in any way you'd like.
+</Info>
+
+<Warning>
+  **Enterprise usage**: For larger organizations (>$5M in annual revenue/funding) using Directus in production, a commercial license is required.
+</Warning>
+
+## Community & Support
+
+<CardGroup cols={3}>
+  <Card title="Documentation" icon="book" href="https://docs.directus.io">
+    Comprehensive guides and API reference
+  </Card>
+  <Card title="Community Forum" icon="comments" href="https://community.directus.io">
+    Ask questions and join discussions
+  </Card>
+  <Card title="Discord" icon="discord" href="https://directus.chat">
+    Real-time community chat
+  </Card>
+  <Card title="GitHub" icon="github" href="https://github.com/directus/directus">
+    Report bugs and request features
+  </Card>
+  <Card title="YouTube" icon="youtube" href="https://www.youtube.com/c/DirectusVideos">
+    Video tutorials and demos
+  </Card>
+  <Card title="Twitter" icon="twitter" href="https://twitter.com/directus">
+    Latest news and updates
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<Steps>
+  <Step title="Quick Start">
+    Follow the [Quick Start guide](/quickstart) to get Directus running in under 5 minutes
+  </Step>
+  <Step title="Install Directus">
+    Read the detailed [Installation guide](/installation) for production deployments
+  </Step>
+  <Step title="Explore the API">
+    Learn about the REST and GraphQL API endpoints
+  </Step>
+  <Step title="Build with the SDK">
+    Use the TypeScript SDK to integrate Directus into your applications
+  </Step>
+</Steps>

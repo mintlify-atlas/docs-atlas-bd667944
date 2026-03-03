@@ -1,0 +1,613 @@
+---
+title: 'GraphQL Queries'
+description: 'Query your data using GraphQL with filtering, sorting, and relationships'
+---
+
+## Basic Queries
+
+GraphQL queries in Directus are automatically generated based on your collections. For each collection, several query types are available.
+
+### Query a Collection
+
+Retrieve multiple items from a collection:
+
+```graphql
+query {
+  articles {
+    id
+    title
+    status
+    created_at
+  }
+}
+```
+
+### Query by ID
+
+Retrieve a single item by its primary key:
+
+```graphql
+query {
+  articles_by_id(id: "123") {
+    id
+    title
+    content
+    author {
+      id
+      name
+    }
+  }
+}
+```
+
+### Query System Collections
+
+Use the `/graphql/system` endpoint to query system collections:
+
+```graphql
+query {
+  users {
+    id
+    first_name
+    last_name
+    email
+  }
+}
+```
+
+<Note>
+  System collection names in the `/graphql/system` endpoint don't include the `directus_` prefix.
+</Note>
+
+## Filtering
+
+Directus provides powerful filtering capabilities through GraphQL query arguments.
+
+### Basic Filters
+
+```graphql
+query {
+  articles(
+    filter: {
+      status: { _eq: "published" }
+    }
+  ) {
+    id
+    title
+    status
+  }
+}
+```
+
+### Filter Operators
+
+Directus supports a comprehensive set of filter operators:
+
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `_eq` | Equal to | `status: { _eq: "published" }` |
+| `_neq` | Not equal to | `status: { _neq: "draft" }` |
+| `_lt` | Less than | `views: { _lt: 100 }` |
+| `_lte` | Less than or equal | `views: { _lte: 100 }` |
+| `_gt` | Greater than | `views: { _gt: 1000 }` |
+| `_gte` | Greater than or equal | `views: { _gte: 1000 }` |
+| `_in` | In array | `status: { _in: ["published", "featured"] }` |
+| `_nin` | Not in array | `status: { _nin: ["draft", "archived"] }` |
+| `_null` | Is null | `deleted_at: { _null: true }` |
+| `_nnull` | Is not null | `published_at: { _nnull: true }` |
+| `_contains` | Contains substring | `title: { _contains: "GraphQL" }` |
+| `_ncontains` | Doesn't contain | `title: { _ncontains: "draft" }` |
+| `_icontains` | Contains (case-insensitive) | `title: { _icontains: "graphql" }` |
+| `_starts_with` | Starts with | `title: { _starts_with: "How to" }` |
+| `_nstarts_with` | Doesn't start with | `title: { _nstarts_with: "Draft:" }` |
+| `_istarts_with` | Starts with (case-insensitive) | `title: { _istarts_with: "how" }` |
+| `_ends_with` | Ends with | `title: { _ends_with: "Tutorial" }` |
+| `_nends_with` | Doesn't end with | `title: { _nends_with: "[WIP]" }` |
+| `_iends_with` | Ends with (case-insensitive) | `title: { _iends_with: "tutorial" }` |
+| `_between` | Between two values | `views: { _between: [100, 1000] }` |
+| `_nbetween` | Not between | `views: { _nbetween: [0, 10] }` |
+
+### Logical Operators
+
+Combine multiple filters with logical operators:
+
+```graphql
+query {
+  articles(
+    filter: {
+      _and: [
+        { status: { _eq: "published" } }
+        { views: { _gte: 1000 } }
+      ]
+    }
+  ) {
+    id
+    title
+    views
+  }
+}
+```
+
+Available logical operators:
+
+- `_and`: All conditions must be true
+- `_or`: At least one condition must be true
+
+```graphql
+query {
+  articles(
+    filter: {
+      _or: [
+        { status: { _eq: "published" } }
+        { status: { _eq: "featured" } }
+      ]
+    }
+  ) {
+    id
+    title
+    status
+  }
+}
+```
+
+### Nested Filters
+
+Filter on related items:
+
+```graphql
+query {
+  articles(
+    filter: {
+      author: {
+        name: { _contains: "John" }
+      }
+    }
+  ) {
+    id
+    title
+    author {
+      id
+      name
+    }
+  }
+}
+```
+
+## Sorting
+
+Sort results using the `sort` argument:
+
+```graphql
+query {
+  articles(
+    sort: ["-created_at"]
+  ) {
+    id
+    title
+    created_at
+  }
+}
+```
+
+- Prefix with `-` for descending order
+- No prefix for ascending order
+- Multiple sort fields are evaluated in order
+
+```graphql
+query {
+  articles(
+    sort: ["status", "-views"]
+  ) {
+    id
+    title
+    status
+    views
+  }
+}
+```
+
+## Pagination
+
+Control how many items are returned:
+
+### Limit and Offset
+
+```graphql
+query {
+  articles(
+    limit: 10
+    offset: 20
+  ) {
+    id
+    title
+  }
+}
+```
+
+### Page-Based Pagination
+
+```graphql
+query {
+  articles(
+    limit: 10
+    page: 3
+  ) {
+    id
+    title
+  }
+}
+```
+
+## Searching
+
+Perform full-text search across multiple fields:
+
+```graphql
+query {
+  articles(
+    search: "GraphQL tutorial"
+  ) {
+    id
+    title
+    content
+  }
+}
+```
+
+<Note>
+  The `search` parameter performs a case-insensitive search across all string fields in the collection.
+</Note>
+
+## Relationships
+
+Directus automatically resolves relationships in GraphQL.
+
+### Many-to-One (M2O)
+
+```graphql
+query {
+  articles {
+    id
+    title
+    author {
+      id
+      name
+      email
+    }
+  }
+}
+```
+
+### One-to-Many (O2M)
+
+```graphql
+query {
+  authors {
+    id
+    name
+    articles {
+      id
+      title
+      status
+    }
+  }
+}
+```
+
+### Many-to-Many (M2M)
+
+```graphql
+query {
+  articles {
+    id
+    title
+    categories {
+      categories_id {
+        id
+        name
+      }
+    }
+  }
+}
+```
+
+### Filtering Related Items
+
+Apply filters to related items:
+
+```graphql
+query {
+  authors {
+    id
+    name
+    articles(
+      filter: { status: { _eq: "published" } }
+    ) {
+      id
+      title
+    }
+  }
+}
+```
+
+## Aggregation
+
+Query aggregated data using the `_aggregated` suffix:
+
+```graphql
+query {
+  articles_aggregated {
+    count {
+      id
+    }
+    avg {
+      views
+    }
+    sum {
+      views
+    }
+    min {
+      created_at
+    }
+    max {
+      created_at
+    }
+  }
+}
+```
+
+### Grouping
+
+Group aggregations by field values:
+
+```graphql
+query {
+  articles_aggregated(
+    groupBy: ["status"]
+  ) {
+    group
+    count {
+      id
+    }
+  }
+}
+```
+
+### Available Aggregate Functions
+
+- `count`: Count of items
+- `avg`: Average value (numeric fields)
+- `sum`: Sum of values (numeric fields)
+- `min`: Minimum value
+- `max`: Maximum value
+- `avgDistinct`: Average of distinct values
+- `sumDistinct`: Sum of distinct values
+- `countDistinct`: Count of distinct values
+
+## Versioning
+
+Query content versions using the `_by_version` suffix:
+
+```graphql
+query {
+  articles_by_version(
+    version: "draft"
+    id: "123"
+  ) {
+    id
+    title
+    content
+    status
+  }
+}
+```
+
+<Note>
+  The `_by_version` queries are only available on the `/graphql` endpoint for item collections, not on `/graphql/system`.
+</Note>
+
+## Deep Filtering
+
+Filter parent items based on related item properties:
+
+```graphql
+query {
+  authors(
+    filter: {
+      articles: {
+        status: { _eq: "published" }
+      }
+    }
+  ) {
+    id
+    name
+    articles {
+      id
+      title
+      status
+    }
+  }
+}
+```
+
+## Using Variables
+
+Make queries reusable with variables:
+
+```graphql
+query GetArticles($status: String!, $limit: Int) {
+  articles(
+    filter: { status: { _eq: $status } }
+    limit: $limit
+  ) {
+    id
+    title
+    status
+  }
+}
+```
+
+Variables payload:
+
+```json
+{
+  "status": "published",
+  "limit": 10
+}
+```
+
+## Fragments
+
+Define reusable field selections:
+
+```graphql
+fragment ArticleFields on articles {
+  id
+  title
+  status
+  created_at
+  author {
+    id
+    name
+  }
+}
+
+query {
+  published: articles(
+    filter: { status: { _eq: "published" } }
+  ) {
+    ...ArticleFields
+  }
+  
+  featured: articles(
+    filter: { featured: { _eq: true } }
+  ) {
+    ...ArticleFields
+  }
+}
+```
+
+## Aliases
+
+Query the same collection multiple times with different arguments:
+
+```graphql
+query {
+  published: articles(
+    filter: { status: { _eq: "published" } }
+  ) {
+    id
+    title
+  }
+  
+  drafts: articles(
+    filter: { status: { _eq: "draft" } }
+  ) {
+    id
+    title
+  }
+  
+  archived: articles(
+    filter: { status: { _eq: "archived" } }
+  ) {
+    id
+    title
+  }
+}
+```
+
+## Singleton Collections
+
+For singleton collections, query without the `_by_id` suffix:
+
+```graphql
+query {
+  settings {
+    site_name
+    logo {
+      id
+      filename_disk
+    }
+    maintenance_mode
+  }
+}
+```
+
+## Example: Complex Query
+
+Here's a comprehensive example combining multiple features:
+
+```graphql
+query GetDashboardData(
+  $status: String!
+  $limit: Int = 10
+  $authorName: String
+) {
+  # Get published articles
+  articles(
+    filter: {
+      _and: [
+        { status: { _eq: $status } }
+        { author: { name: { _contains: $authorName } } }
+      ]
+    }
+    sort: ["-views", "-created_at"]
+    limit: $limit
+  ) {
+    id
+    title
+    views
+    created_at
+    author {
+      id
+      name
+      avatar {
+        id
+        filename_disk
+      }
+    }
+    categories {
+      categories_id {
+        id
+        name
+      }
+    }
+  }
+  
+  # Get article statistics
+  stats: articles_aggregated(
+    filter: { status: { _eq: $status } }
+    groupBy: ["author"]
+  ) {
+    group
+    count {
+      id
+    }
+    avg {
+      views
+    }
+  }
+}
+```
+
+Variables:
+
+```json
+{
+  "status": "published",
+  "limit": 20,
+  "authorName": "Smith"
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="GraphQL Mutations" icon="pen-to-square" href="/api/graphql/mutations">
+    Learn how to create, update, and delete data
+  </Card>
+  
+  <Card title="GraphQL Subscriptions" icon="tower-broadcast" href="/api/graphql/subscriptions">
+    Get real-time updates with subscriptions
+  </Card>
+</CardGroup>

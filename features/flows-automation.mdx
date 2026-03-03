@@ -1,0 +1,510 @@
+---
+title: Flows & Automation
+description: Automate workflows with Directus Flows - a powerful no-code automation system supporting event triggers, webhooks, and custom operations.
+---
+
+Directus Flows is a powerful automation engine that allows you to create complex workflows triggered by events, schedules, webhooks, or manual execution.
+
+## Flow Triggers
+
+Flows can be triggered by different events:
+
+### Event Trigger
+
+Run flows when data changes occur:
+
+```javascript
+{
+  trigger: 'event',
+  options: {
+    type: 'action', // or 'filter'
+    scope: ['items.create', 'items.update'],
+    collections: ['articles', 'pages']
+  }
+}
+```
+
+#### Available Events
+
+- **items.create** - After item creation
+- **items.update** - After item update
+- **items.delete** - After item deletion
+- **auth.login** - User login
+- **files.upload** - File upload
+
+### Schedule Trigger
+
+Run flows on a schedule using cron syntax:
+
+```javascript
+{
+  trigger: 'schedule',
+  options: {
+    cron: '0 0 * * *' // Daily at midnight
+  }
+}
+```
+
+Cron examples:
+- `*/5 * * * *` - Every 5 minutes
+- `0 9 * * 1` - Every Monday at 9 AM
+- `0 0 1 * *` - First day of every month
+
+### Webhook Trigger
+
+Create HTTP endpoints that trigger flows:
+
+```javascript
+{
+  trigger: 'webhook',
+  options: {
+    method: 'POST', // GET, POST, PUT, PATCH, DELETE
+    async: false, // Wait for completion
+    return: '$last' // Return last operation result
+  }
+}
+```
+
+Access webhook:
+```bash
+POST https://your-project.directus.app/flows/trigger/{flow-id}
+Authorization: Bearer YOUR_TOKEN
+Content-Type: application/json
+
+{"data": "your payload"}
+```
+
+### Manual Trigger
+
+Allow users to trigger flows from the App:
+
+```javascript
+{
+  trigger: 'manual',
+  options: {
+    collections: ['articles'],
+    requireSelection: true, // Require items to be selected
+    location: 'item' // 'item' or 'collection'
+  }
+}
+```
+
+### Operation Trigger
+
+Trigger flows programmatically from other flows or extensions:
+
+```javascript
+{
+  trigger: 'operation'
+}
+```
+
+Call from another flow:
+```javascript
+// Using trigger-flow operation
+{
+  operation: 'trigger-flow',
+  options: {
+    flow: 'target-flow-id',
+    payload: { /* data to pass */ }
+  }
+}
+```
+
+## Operations
+
+Operations are the building blocks of flows. Chain operations together to create workflows.
+
+### Condition
+
+Branch flow based on conditions:
+
+```javascript
+{
+  operation: 'condition',
+  options: {
+    filter: {
+      status: { _eq: 'published' },
+      author: { _null: false }
+    }
+  },
+  resolve: 'operation-if-true',
+  reject: 'operation-if-false'
+}
+```
+
+### Create Item
+
+Create records in collections:
+
+```javascript
+{
+  operation: 'item-create',
+  options: {
+    collection: 'notifications',
+    payload: {
+      message: 'New article: {{$trigger.title}}',
+      user: '{{$trigger.author}}',
+      timestamp: '{{$NOW}}'
+    },
+    permissions: '$full', // $public, $trigger, $full, or role UUID
+    emitEvents: true
+  }
+}
+```
+
+### Update Item
+
+Modify existing records:
+
+```javascript
+{
+  operation: 'item-update',
+  options: {
+    collection: 'articles',
+    key: '{{$trigger.key}}',
+    payload: {
+      view_count: '{{$trigger.view_count + 1}}',
+      last_viewed: '{{$NOW}}'
+    },
+    permissions: '$trigger'
+  }
+}
+```
+
+### Read Item
+
+Fetch data from collections:
+
+```javascript
+{
+  operation: 'item-read',
+  options: {
+    collection: 'articles',
+    key: '{{$trigger.article_id}}',
+    fields: ['title', 'author.email', 'categories.name'],
+    permissions: '$full'
+  }
+}
+```
+
+### Delete Item
+
+Remove records:
+
+```javascript
+{
+  operation: 'item-delete',
+  options: {
+    collection: 'temp_data',
+    key: '{{$trigger.key}}',
+    permissions: '$full'
+  }
+}
+```
+
+### Send Email
+
+Send emails with templates:
+
+```javascript
+{
+  operation: 'mail',
+  options: {
+    to: '{{$trigger.author.email}}',
+    subject: 'Your article was published',
+    type: 'template', // 'wysiwyg', 'markdown', or 'template'
+    template: 'article-published',
+    data: {
+      article_title: '{{$trigger.title}}',
+      article_url: 'https://example.com/articles/{{$trigger.slug}}'
+    }
+  }
+}
+```
+
+### HTTP Request
+
+Call external APIs:
+
+```javascript
+{
+  operation: 'request',
+  options: {
+    method: 'POST',
+    url: 'https://api.example.com/webhooks',
+    headers: {
+      'Authorization': 'Bearer {{$env.API_TOKEN}}',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      event: 'article.published',
+      data: {
+        id: '{{$trigger.id}}',
+        title: '{{$trigger.title}}'
+      }
+    })
+  }
+}
+```
+
+### Transform Data
+
+Manipulate data with JSONata:
+
+```javascript
+{
+  operation: 'transform',
+  options: {
+    json: {
+      fullName: '$trigger.first_name & " " & $trigger.last_name',
+      tags: '$map($trigger.categories, function($v) { $v.name })',
+      publishedDate: '$trigger.date_published ~> $toMillis()',
+      metadata: '{
+        "author": $trigger.author.email,
+        "wordCount": $length($split($trigger.content, " "))
+      }'
+    }
+  }
+}
+```
+
+### Execute Script
+
+Run custom JavaScript/TypeScript:
+
+```javascript
+{
+  operation: 'exec',
+  options: {
+    code: `
+module.exports = async function({ data, accountability }) {
+  const axios = require('axios');
+  
+  // Custom logic
+  const result = await axios.get('https://api.example.com/data');
+  
+  return {
+    processed: data.items.length,
+    external: result.data
+  };
+};
+    `
+  }
+}
+```
+
+### Log Message
+
+Write to system logs:
+
+```javascript
+{
+  operation: 'log',
+  options: {
+    message: 'Article {{$trigger.title}} was published by {{$trigger.author.email}}'
+  }
+}
+```
+
+### Sleep/Delay
+
+Pause flow execution:
+
+```javascript
+{
+  operation: 'sleep',
+  options: {
+    milliseconds: 5000 // 5 seconds
+  }
+}
+```
+
+### Throw Error
+
+Stop flow execution with error:
+
+```javascript
+{
+  operation: 'throw-error',
+  options: {
+    message: 'Invalid status transition'
+  }
+}
+```
+
+### Send Notification
+
+Create in-app notifications:
+
+```javascript
+{
+  operation: 'notification',
+  options: {
+    recipient: '{{$trigger.author}}',
+    subject: 'Your article needs review',
+    message: 'Article "{{$trigger.title}}" has been submitted for review',
+    collection: 'articles',
+    item: '{{$trigger.id}}'
+  }
+}
+```
+
+## Flow Variables
+
+Access data within operations using template variables:
+
+### $trigger
+
+Data from the flow trigger:
+
+```javascript
+'{{$trigger.id}}'
+'{{$trigger.title}}'
+'{{$trigger.author.email}}'
+```
+
+### $last
+
+Result from the previous operation:
+
+```javascript
+'{{$last.id}}'
+'{{$last[0].title}}' // For array results
+```
+
+### $accountability
+
+Information about the user who triggered the flow:
+
+```javascript
+'{{$accountability.user}}'
+'{{$accountability.role}}'
+'{{$accountability.ip}}'
+```
+
+### $env
+
+Environment variables (must be allowlisted):
+
+```bash
+FLOWS_ENV_ALLOW_LIST="API_KEY,WEBHOOK_SECRET"
+```
+
+```javascript
+'{{$env.API_KEY}}'
+'{{$env.WEBHOOK_SECRET}}'
+```
+
+### Special Functions
+
+- `{{$NOW}}` - Current timestamp
+- `{{$NOW('+1 day')}}` - Relative time
+- `{{$NOW('-7 days')}}` - Past time
+
+## Flow Execution
+
+Flows execute operations in order with error handling:
+
+```javascript
+[
+  {
+    id: 'op1',
+    operation: 'item-read',
+    resolve: 'op2', // Next operation on success
+    reject: 'error-handler' // Operation on failure
+  },
+  {
+    id: 'op2',
+    operation: 'condition',
+    resolve: 'send-email',
+    reject: 'log-skip'
+  },
+  {
+    id: 'send-email',
+    operation: 'mail'
+  },
+  {
+    id: 'error-handler',
+    operation: 'log',
+    options: { message: 'Failed to process: {{$last.message}}' }
+  }
+]
+```
+
+## Example Workflows
+
+### Auto-publish Scheduled Content
+
+```javascript
+{
+  trigger: 'schedule',
+  options: { cron: '*/5 * * * *' }, // Every 5 minutes
+  operations: [
+    {
+      operation: 'item-read',
+      options: {
+        collection: 'articles',
+        query: {
+          filter: {
+            status: { _eq: 'scheduled' },
+            publish_date: { _lte: '$NOW' }
+          }
+        }
+      }
+    },
+    {
+      operation: 'item-update',
+      options: {
+        collection: 'articles',
+        keys: '{{$last.map(a => a.id)}}',
+        payload: { status: 'published' }
+      }
+    }
+  ]
+}
+```
+
+### Sync to External CMS
+
+```javascript
+{
+  trigger: 'event',
+  options: {
+    type: 'action',
+    scope: ['items.create', 'items.update'],
+    collections: ['articles']
+  },
+  operations: [
+    {
+      operation: 'request',
+      options: {
+        method: 'POST',
+        url: 'https://cms.example.com/api/sync',
+        headers: { 'X-API-Key': '{{$env.CMS_API_KEY}}' },
+        body: JSON.stringify({ article: '{{$trigger}}' })
+      }
+    }
+  ]
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Conditions for Flow Control">
+    Add condition operations to prevent unnecessary operations and handle edge cases.
+  </Accordion>
+  
+  <Accordion title="Handle Errors Gracefully">
+    Use reject branches to handle failures and log errors for debugging.
+  </Accordion>
+  
+  <Accordion title="Limit Email Operations">
+    Email operations are rate-limited. Use conditions to prevent spam.
+  </Accordion>
+  
+  <Accordion title="Use Async Webhooks for Long Operations">
+    Set `async: true` on webhook triggers that perform time-consuming tasks.
+  </Accordion>
+</AccordionGroup>

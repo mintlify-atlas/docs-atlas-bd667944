@@ -1,0 +1,536 @@
+---
+title: Database Migrations
+description: Learn how to create, manage, and run database migrations in Directus to evolve your database schema over time.
+---
+
+Directus uses database migrations to manage schema changes and system updates. Migrations provide a version-controlled way to modify your database structure and data, ensuring consistency across different environments.
+
+## Overview
+
+Migrations in Directus are TypeScript files that define database changes. Each migration has:
+
+- **Version** - A unique identifier (timestamp-based)
+- **Name** - Descriptive name of the migration
+- **Up Function** - Code to apply the migration
+- **Down Function** - Code to revert the migration
+
+All migrations are tracked in the `directus_migrations` table.
+
+## Migration Structure
+
+A basic migration file follows this pattern:
+
+```typescript
+import type { Knex } from 'knex';
+
+export async function up(knex: Knex): Promise<void> {
+  // Apply changes
+  await knex.schema.createTable('articles', (table) => {
+    table.uuid('id').primary().notNullable();
+    table.string('title').notNullable();
+    table.text('content');
+    table.timestamp('date_created').defaultTo(knex.fn.now());
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  // Revert changes
+  await knex.schema.dropTable('articles');
+}
+```
+
+## System Migrations
+
+Directus includes built-in migrations located in `/api/src/database/migrations/`. These handle:
+
+- Creating system tables (users, files, collections, etc.)
+- Adding new features to Directus
+- Modifying system table structures
+- Data transformations for upgrades
+
+### Migration Naming Convention
+
+System migrations follow the pattern:
+
+```
+{version}-{description}.ts
+```
+
+Examples:
+- `20260204A-add-deployment.ts`
+- `20260128A-add-collaborative-editing.ts`
+- `20251103A-add-ai-settings.ts`
+
+The version format is `YYYYMMDD{A-Z}` where:
+- `YYYYMMDD` - Date of the migration
+- `{A-Z}` - Letter suffix for multiple migrations on the same day
+
+## Custom Migrations
+
+You can create custom migrations to manage your own schema changes.
+
+### Location
+
+Custom migrations are stored in:
+
+```
+extensions/migrations/
+```
+
+Configure a custom path:
+
+```env
+MIGRATIONS_PATH='./custom/migrations'
+```
+
+### Creating a Custom Migration
+
+1. Create a new file in your migrations directory:
+
+```
+extensions/migrations/20260303A-add-products-table.js
+```
+
+2. Define the up and down functions:
+
+```javascript
+module.exports = {
+  async up(knex) {
+    await knex.schema.createTable('products', (table) => {
+      table.increments('id').primary();
+      table.string('name').notNullable();
+      table.decimal('price', 10, 2);
+      table.integer('stock').defaultTo(0);
+      table.timestamp('created_at').defaultTo(knex.fn.now());
+      table.timestamp('updated_at').defaultTo(knex.fn.now());
+    });
+  },
+
+  async down(knex) {
+    await knex.schema.dropTable('products');
+  }
+};
+```
+
+### Custom Migration Format
+
+Custom migrations must:
+- Have a name containing a dash (`-`)
+- Use `.js`, `.cjs`, or `.mjs` extension
+- Export `up` and `down` functions
+- Use valid JavaScript/CommonJS/ESM syntax
+
+## Running Migrations
+
+### CLI Commands
+
+Run migrations using the Directus CLI:
+
+```bash
+# Apply all pending migrations
+npx directus database migrate:latest
+
+# Apply next migration
+npx directus database migrate:up
+
+# Revert last migration
+npx directus database migrate:down
+```
+
+### Programmatic Usage
+
+Run migrations programmatically:
+
+```typescript
+import getDatabase from './database';
+import runMigrations from './database/migrations/run';
+
+const database = getDatabase();
+
+// Run all pending migrations
+await runMigrations(database, 'latest');
+
+// Run next migration
+await runMigrations(database, 'up');
+
+// Revert last migration
+await runMigrations(database, 'down');
+```
+
+### Migration Execution Order
+
+Migrations execute in version order:
+
+1. System migrations (sorted by version)
+2. Custom migrations (sorted by version)
+3. Combined and deduplicated by version
+
+## Migration Examples
+
+### Creating Tables
+
+```typescript
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.createTable('directus_deployments', (table) => {
+    table.uuid('id').primary().notNullable();
+    table.string('provider').notNullable().unique();
+    table.text('credentials');
+    table.text('options');
+    table.timestamp('date_created').defaultTo(knex.fn.now());
+    table.uuid('user_created')
+      .references('id')
+      .inTable('directus_users')
+      .onDelete('SET NULL');
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  await knex.schema.dropTable('directus_deployments');
+}
+```
+
+### Adding Columns
+
+```typescript
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.alterTable('directus_fields', (table) => {
+    table.boolean('searchable').defaultTo(true);
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  await knex.schema.alterTable('directus_fields', (table) => {
+    table.dropColumn('searchable');
+  });
+}
+```
+
+### Modifying Columns
+
+```typescript
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.alterTable('directus_panels', (table) => {
+    table.string('icon', 64).alter();
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  await knex.schema.alterTable('directus_panels', (table) => {
+    table.string('icon', 30).alter();
+  });
+}
+```
+
+### Creating Indexes
+
+```typescript
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.alterTable('directus_revisions', (table) => {
+    table.index('collection');
+    table.index('item');
+    table.index(['collection', 'item']);
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  await knex.schema.alterTable('directus_revisions', (table) => {
+    table.dropIndex('collection');
+    table.dropIndex('item');
+    table.dropIndex(['collection', 'item']);
+  });
+}
+```
+
+### Data Migrations
+
+```typescript
+export async function up(knex: Knex): Promise<void> {
+  // Migrate data from old format to new format
+  const records = await knex
+    .select('*')
+    .from('directus_activity')
+    .where('action', 'comment');
+
+  for (const record of records) {
+    await knex('directus_comments').insert({
+      id: record.id,
+      collection: record.collection,
+      item: record.item,
+      comment: record.comment,
+      date_created: record.timestamp,
+      user_created: record.user,
+    });
+  }
+
+  // Remove old records
+  await knex('directus_activity')
+    .where('action', 'comment')
+    .delete();
+}
+
+export async function down(knex: Knex): Promise<void> {
+  // Revert data migration
+  const comments = await knex
+    .select('*')
+    .from('directus_comments');
+
+  for (const comment of comments) {
+    await knex('directus_activity').insert({
+      id: comment.id,
+      action: 'comment',
+      collection: comment.collection,
+      item: comment.item,
+      comment: comment.comment,
+      timestamp: comment.date_created,
+      user: comment.user_created,
+    });
+  }
+
+  await knex('directus_comments').delete();
+}
+```
+
+### Foreign Key Relationships
+
+```typescript
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.createTable('directus_deployment_projects', (table) => {
+    table.uuid('id').primary().notNullable();
+    table.uuid('deployment')
+      .notNullable()
+      .references('id')
+      .inTable('directus_deployments')
+      .onDelete('CASCADE');
+    table.string('external_id').notNullable();
+    table.string('name').notNullable();
+    table.unique(['deployment', 'external_id']);
+  });
+}
+
+export async function down(knex: Knex): Promise<void> {
+  await knex.schema.dropTable('directus_deployment_projects');
+}
+```
+
+## Migration Tracking
+
+The `directus_migrations` table tracks applied migrations:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `version` | string | Migration version identifier |
+| `name` | string | Human-readable migration name |
+| `timestamp` | datetime | When the migration was applied |
+
+Query applied migrations:
+
+```typescript
+const migrations = await knex
+  .select('*')
+  .from('directus_migrations')
+  .orderBy('version');
+```
+
+## Validation
+
+### Migration Validation
+
+Directus validates migrations on startup:
+
+```typescript
+import { validateMigrations } from './database';
+
+const isValid = await validateMigrations();
+// Returns true if all required migrations have been applied
+```
+
+### Version Collision Detection
+
+Migrations must have unique versions:
+
+```typescript
+// This will throw an error:
+// 20260303A-create-products.ts
+// 20260303A-create-orders.ts  // Same version!
+
+// Use different suffixes:
+// 20260303A-create-products.ts
+// 20260303B-create-orders.ts  // Unique version
+```
+
+## Best Practices
+
+### Always Provide Down Migrations
+
+Even if you don't plan to rollback, always implement the `down` function:
+
+```typescript
+export async function down(knex: Knex): Promise<void> {
+  // Revert all changes from up()
+}
+```
+
+### Test Both Directions
+
+Test that migrations can be applied and reverted:
+
+```bash
+# Apply
+npx directus database migrate:up
+
+# Verify changes
+
+# Revert
+npx directus database migrate:down
+
+# Verify reversion
+
+# Apply again
+npx directus database migrate:up
+```
+
+### Keep Migrations Small
+
+Create focused migrations that do one thing well:
+
+```typescript
+// Good - Single purpose
+// 20260303A-add-products-table.ts
+// 20260303B-add-orders-table.ts
+
+// Avoid - Multiple unrelated changes
+// 20260303A-add-all-ecommerce-tables.ts
+```
+
+### Use Transactions
+
+Knex migrations run in transactions by default (except MySQL DDL):
+
+```typescript
+export async function up(knex: Knex): Promise<void> {
+  // All changes in this function run in a transaction
+  await knex.schema.createTable('products', ...);
+  await knex('products').insert(...);
+  // If any step fails, all changes are rolled back
+}
+```
+
+### Handle Database Differences
+
+Account for database-specific behaviors:
+
+```typescript
+export async function up(knex: Knex): Promise<void> {
+  const client = knex.client.config.client;
+
+  await knex.schema.createTable('items', (table) => {
+    if (client === 'pg') {
+      table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
+    } else {
+      table.uuid('id').primary();
+    }
+
+    table.string('name');
+  });
+}
+```
+
+### Document Complex Migrations
+
+Add comments for complex logic:
+
+```typescript
+export async function up(knex: Knex): Promise<void> {
+  // Migrate legacy comment data to new comments table
+  // This handles the separation of comments from activity logs
+  // introduced in v10.5.0
+
+  const comments = await knex
+    .select('*')
+    .from('directus_activity')
+    .where('action', 'comment');
+
+  // ... migration logic
+}
+```
+
+### Avoid Direct Table References
+
+Use the schema builder instead of raw SQL when possible:
+
+```typescript
+// Preferred - Database agnostic
+export async function up(knex: Knex): Promise<void> {
+  await knex.schema.createTable('items', (table) => {
+    table.increments('id');
+  });
+}
+
+// Avoid - Database specific
+export async function up(knex: Knex): Promise<void> {
+  await knex.raw(`
+    CREATE TABLE items (
+      id SERIAL PRIMARY KEY
+    )
+  `);
+}
+```
+
+### Backup Before Migrations
+
+Always backup your database before running migrations in production:
+
+```bash
+# PostgreSQL
+pg_dump -U user -d database > backup.sql
+
+# MySQL
+mysqldump -u user -p database > backup.sql
+
+# Then run migrations
+npx directus database migrate:latest
+```
+
+## Troubleshooting
+
+### Migration Failed Mid-Execution
+
+If a migration fails partway through:
+
+1. Check the `directus_migrations` table
+2. If the migration wasn't recorded, fix the issue and run again
+3. If it was recorded but incomplete, manually revert changes and remove the record
+
+```sql
+DELETE FROM directus_migrations WHERE version = '20260303A';
+```
+
+### Version Collision Error
+
+```
+Migration keys collide! Please ensure that every migration uses a unique key.
+```
+
+Solution: Rename one of the colliding migrations with a different suffix:
+
+```
+20260303A-first.ts  -> 20260303A-first.ts
+20260303A-second.ts -> 20260303B-second.ts
+```
+
+### Missing Migration File
+
+If a migration is recorded in the database but the file is missing, you can:
+
+1. Restore the migration file from version control
+2. Or remove the record (risky - only if you're certain):
+
+```sql
+DELETE FROM directus_migrations WHERE version = '20260303A';
+```
+
+## Next Steps
+
+- Explore [Schema Management](/database/schema-management)
+- Learn about [Supported Databases](/database/supported-databases)
+- Check the [Knex.js Schema Builder Documentation](http://knexjs.org/guide/schema-builder.html)

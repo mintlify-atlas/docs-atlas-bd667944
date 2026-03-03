@@ -1,0 +1,209 @@
+---
+title: Authentication
+description: Authenticate with the Directus REST API
+---
+
+Directus supports multiple authentication methods to suit different use cases.
+
+## Public Data
+
+Some data may be accessible without authentication if the Public role has permissions configured.
+
+```bash
+curl "https://your-directus-instance.com/items/articles"
+```
+
+## Temporary Token (JWT)
+
+Login with email and password to receive a temporary access token and refresh token.
+
+### Login
+
+<ParamField path="email" type="string" required>
+  User's email address
+</ParamField>
+
+<ParamField path="password" type="string" required>
+  User's password
+</ParamField>
+
+```bash
+curl -X POST "https://your-directus-instance.com/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "admin@example.com",
+    "password": "password"
+  }'
+```
+
+**Response:**
+
+```json
+{
+  "data": {
+    "access_token": "eyJhbGc...",
+    "expires": 900000,
+    "refresh_token": "abc123..."
+  }
+}
+```
+
+### Using the Token
+
+Include the access token in the Authorization header:
+
+```bash
+curl "https://your-directus-instance.com/items/articles" \
+  -H "Authorization: Bearer eyJhbGc..."
+```
+
+### Refresh Token
+
+Access tokens expire after 15 minutes by default. Use the refresh token to get a new access token:
+
+```bash
+curl -X POST "https://your-directus-instance.com/auth/refresh" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "refresh_token": "abc123..."
+  }'
+```
+
+### Logout
+
+Invalidate the refresh token:
+
+```bash
+curl -X POST "https://your-directus-instance.com/auth/logout" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "refresh_token": "abc123..."
+  }'
+```
+
+## Static Token
+
+For server-to-server communication, use a static token. Create one in **Settings > Access Tokens**.
+
+```bash
+curl "https://your-directus-instance.com/items/articles" \
+  -H "Authorization: Bearer YOUR_STATIC_TOKEN"
+```
+
+<Warning>
+  Static tokens never expire. Store them securely and never expose them in client-side code.
+</Warning>
+
+## SSO Authentication
+
+Directus supports external authentication providers:
+
+### OAuth 2.0
+
+```bash
+# Redirect user to OAuth provider
+GET /auth/login/google
+```
+
+### OpenID Connect
+
+```bash
+GET /auth/login/openid
+```
+
+### LDAP
+
+```bash
+curl -X POST "https://your-directus-instance.com/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@company.com",
+    "password": "password",
+    "mode": "ldap"
+  }'
+```
+
+### SAML
+
+```bash
+GET /auth/login/saml
+```
+
+See the [Authentication Features](/features/authentication) guide for SSO configuration.
+
+## Password Reset
+
+### Request Password Reset
+
+```bash
+curl -X POST "https://your-directus-instance.com/auth/password/request" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com"
+  }'
+```
+
+### Reset Password
+
+```bash
+curl -X POST "https://your-directus-instance.com/auth/password/reset" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "token": "reset-token-from-email",
+    "password": "new-password"
+  }'
+```
+
+## Two-Factor Authentication
+
+Enable TFA for additional security. After login, provide the OTP code:
+
+```bash
+curl -X POST "https://your-directus-instance.com/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "admin@example.com",
+    "password": "password",
+    "otp": "123456"
+  }'
+```
+
+## Cookie-Based Sessions
+
+For browser-based applications, use cookie sessions:
+
+```bash
+SESSION_COOKIE_SECURE=true
+SESSION_COOKIE_SAME_SITE=lax
+```
+
+Login returns a cookie that's automatically sent with subsequent requests.
+
+## Error Codes
+
+<ResponseField name="INVALID_CREDENTIALS" type="error">
+  Email or password is incorrect
+</ResponseField>
+
+<ResponseField name="INVALID_TOKEN" type="error">
+  Access token is invalid or expired
+</ResponseField>
+
+<ResponseField name="INVALID_OTP" type="error">
+  Two-factor authentication code is incorrect
+</ResponseField>
+
+<ResponseField name="USER_SUSPENDED" type="error">
+  User account has been suspended
+</ResponseField>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Items API" icon="database" href="/api/rest/items">
+    Work with collection items
+  </Card>
+  <Card title="Users API" icon="users" href="/api/rest/users">
+    Manage users
+  </Card>
+</CardGroup>

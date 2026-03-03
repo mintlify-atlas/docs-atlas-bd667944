@@ -1,0 +1,674 @@
+---
+title: 'GraphQL Mutations'
+description: 'Create, update, and delete data using GraphQL mutations'
+---
+
+## Introduction
+
+Mutations in Directus GraphQL allow you to modify data in your collections. Each collection automatically gets mutation operations for creating, updating, and deleting items.
+
+<Warning>
+  Mutations must be sent via `POST` requests. Attempting to send mutations via `GET` will result in an error.
+</Warning>
+
+## Mutation Types
+
+For each non-singleton collection, Directus generates the following mutations:
+
+- `create_<collection>_item` - Create a single item
+- `create_<collection>_items` - Create multiple items
+- `update_<collection>_item` - Update a single item by ID
+- `update_<collection>_items` - Update multiple items by IDs
+- `update_<collection>_batch` - Update multiple items with different data
+- `delete_<collection>_item` - Delete a single item by ID
+- `delete_<collection>_items` - Delete multiple items by IDs
+
+For singleton collections:
+
+- `update_<collection>` - Upsert the singleton item
+
+<Note>
+  Read-only system collections like `directus_activity` and `directus_revisions` don't have mutation operations.
+</Note>
+
+## Create Operations
+
+### Create Single Item
+
+Create a single item and return specified fields:
+
+```graphql
+mutation {
+  create_articles_item(
+    data: {
+      title: "Getting Started with GraphQL"
+      content: "GraphQL is a powerful query language..."
+      status: "draft"
+    }
+  ) {
+    id
+    title
+    status
+    created_at
+  }
+}
+```
+
+### Create Multiple Items
+
+Create multiple items in a single mutation:
+
+```graphql
+mutation {
+  create_articles_items(
+    data: [
+      {
+        title: "First Article"
+        status: "published"
+      }
+      {
+        title: "Second Article"
+        status: "draft"
+      }
+    ]
+  ) {
+    id
+    title
+    status
+  }
+}
+```
+
+### Create with Relationships
+
+Create an item with related items:
+
+```graphql
+mutation {
+  create_articles_item(
+    data: {
+      title: "Article with Categories"
+      status: "published"
+      categories: {
+        create: [
+          { categories_id: { name: "Technology" } }
+          { categories_id: { name: "Tutorial" } }
+        ]
+      }
+    }
+  ) {
+    id
+    title
+    categories {
+      categories_id {
+        id
+        name
+      }
+    }
+  }
+}
+```
+
+### Create with Existing Relations
+
+Link to existing related items:
+
+```graphql
+mutation {
+  create_articles_item(
+    data: {
+      title: "New Article"
+      author: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      categories: {
+        create: [
+          { categories_id: 1 }
+          { categories_id: 2 }
+        ]
+      }
+    }
+  ) {
+    id
+    title
+    author {
+      id
+      name
+    }
+  }
+}
+```
+
+## Update Operations
+
+### Update Single Item
+
+Update a single item by its ID:
+
+```graphql
+mutation {
+  update_articles_item(
+    id: "123"
+    data: {
+      title: "Updated Title"
+      status: "published"
+    }
+  ) {
+    id
+    title
+    status
+    updated_at
+  }
+}
+```
+
+### Update Multiple Items
+
+Update multiple items with the same data:
+
+```graphql
+mutation {
+  update_articles_items(
+    ids: ["123", "456", "789"]
+    data: {
+      status: "archived"
+    }
+  ) {
+    id
+    title
+    status
+  }
+}
+```
+
+### Batch Update
+
+Update multiple items with different data for each:
+
+```graphql
+mutation {
+  update_articles_batch(
+    data: [
+      {
+        id: "123"
+        title: "First Updated Title"
+      }
+      {
+        id: "456"
+        title: "Second Updated Title"
+      }
+    ]
+  ) {
+    id
+    title
+    updated_at
+  }
+}
+```
+
+### Update Singleton
+
+For singleton collections, use the upsert operation:
+
+```graphql
+mutation {
+  update_settings(
+    data: {
+      site_name: "My Awesome Site"
+      maintenance_mode: false
+    }
+  ) {
+    site_name
+    maintenance_mode
+    updated_at
+  }
+}
+```
+
+### Update Relationships
+
+Update related items:
+
+```graphql
+mutation {
+  update_articles_item(
+    id: "123"
+    data: {
+      categories: {
+        create: [{ categories_id: 3 }]
+        update: [{ id: 1, categories_id: { name: "Updated Category" } }]
+        delete: [2]
+      }
+    }
+  ) {
+    id
+    title
+    categories {
+      id
+      categories_id {
+        id
+        name
+      }
+    }
+  }
+}
+```
+
+## Delete Operations
+
+### Delete Single Item
+
+Delete a single item by its ID:
+
+```graphql
+mutation {
+  delete_articles_item(id: "123") {
+    id
+  }
+}
+```
+
+### Delete Multiple Items
+
+Delete multiple items by their IDs:
+
+```graphql
+mutation {
+  delete_articles_items(ids: ["123", "456", "789"]) {
+    ids
+  }
+}
+```
+
+<Warning>
+  Delete operations are permanent and cannot be undone. Consider implementing a "soft delete" pattern with a status field instead.
+</Warning>
+
+## Using Variables
+
+Make mutations reusable and secure with variables:
+
+```graphql
+mutation CreateArticle(
+  $title: String!
+  $content: String!
+  $status: String
+) {
+  create_articles_item(
+    data: {
+      title: $title
+      content: $content
+      status: $status
+    }
+  ) {
+    id
+    title
+    status
+    created_at
+  }
+}
+```
+
+Variables payload:
+
+```json
+{
+  "title": "My New Article",
+  "content": "This is the article content...",
+  "status": "draft"
+}
+```
+
+## Return Values
+
+You can control what data is returned after a mutation:
+
+### Return Specific Fields
+
+```graphql
+mutation {
+  create_articles_item(
+    data: {
+      title: "New Article"
+      status: "draft"
+    }
+  ) {
+    id
+    title
+    created_at
+  }
+}
+```
+
+### Return Boolean
+
+If you don't request any fields, the mutation returns `true` on success:
+
+```graphql
+mutation {
+  update_articles_item(
+    id: "123"
+    data: { views: 100 }
+  )
+}
+```
+
+Response:
+
+```json
+{
+  "data": {
+    "update_articles_item": true
+  }
+}
+```
+
+### Return Related Data
+
+Return nested relationship data:
+
+```graphql
+mutation {
+  create_articles_item(
+    data: {
+      title: "Article with Author"
+      author: "author-uuid"
+    }
+  ) {
+    id
+    title
+    author {
+      id
+      name
+      email
+    }
+  }
+}
+```
+
+## System Collection Mutations
+
+Use the `/graphql/system` endpoint to mutate system collections:
+
+### Create User
+
+```graphql
+mutation {
+  create_users_item(
+    data: {
+      first_name: "John"
+      last_name: "Doe"
+      email: "john@example.com"
+      password: "secure-password"
+      role: "role-uuid"
+    }
+  ) {
+    id
+    first_name
+    last_name
+    email
+  }
+}
+```
+
+### Update Role Permissions
+
+```graphql
+mutation {
+  update_roles_item(
+    id: "role-uuid"
+    data: {
+      name: "Editor"
+      description: "Can edit content"
+    }
+  ) {
+    id
+    name
+    description
+  }
+}
+```
+
+## File Uploads
+
+To upload files via GraphQL, you need to use multipart form data. Most GraphQL clients support this:
+
+### Using Apollo Client
+
+```javascript
+import { createUploadLink } from 'apollo-upload-client';
+
+const uploadLink = createUploadLink({
+  uri: 'https://your-directus-instance.com/graphql',
+  headers: {
+    authorization: `Bearer ${token}`,
+  },
+});
+```
+
+### Mutation with File Upload
+
+```graphql
+mutation UploadFile($file: Upload!) {
+  create_files_item(
+    data: {
+      file: $file
+      title: "My Image"
+    }
+  ) {
+    id
+    filename_disk
+    filename_download
+  }
+}
+```
+
+## Error Handling
+
+Mutations return errors in the standard GraphQL format:
+
+```json
+{
+  "errors": [
+    {
+      "message": "You don't have permission to create this.",
+      "extensions": {
+        "code": "FORBIDDEN"
+      }
+    }
+  ],
+  "data": {
+    "create_articles_item": null
+  }
+}
+```
+
+### Common Error Codes
+
+- `FORBIDDEN` - Insufficient permissions
+- `INVALID_PAYLOAD` - Invalid data provided
+- `INVALID_QUERY` - Invalid GraphQL syntax
+- `RECORD_NOT_FOUND` - Item with specified ID doesn't exist
+- `FAILED_VALIDATION` - Data doesn't meet validation rules
+
+## Combining Multiple Mutations
+
+Execute multiple mutations in a single request:
+
+```graphql
+mutation {
+  createAuthor: create_authors_item(
+    data: {
+      name: "Jane Smith"
+      email: "jane@example.com"
+    }
+  ) {
+    id
+    name
+  }
+  
+  createArticle: create_articles_item(
+    data: {
+      title: "New Article"
+      status: "published"
+    }
+  ) {
+    id
+    title
+  }
+  
+  updateSettings: update_settings(
+    data: {
+      maintenance_mode: false
+    }
+  ) {
+    maintenance_mode
+  }
+}
+```
+
+<Note>
+  Mutations in a single request are executed sequentially in the order they appear.
+</Note>
+
+## Example: Complete CRUD Operations
+
+Here's a comprehensive example showing create, read, update, and delete:
+
+```graphql
+mutation ManageArticle(
+  $createData: create_articles_input!
+  $updateId: ID!
+  $updateData: update_articles_input!
+  $deleteId: ID!
+) {
+  # Create new article
+  created: create_articles_item(data: $createData) {
+    id
+    title
+    status
+    created_at
+  }
+  
+  # Update existing article
+  updated: update_articles_item(
+    id: $updateId
+    data: $updateData
+  ) {
+    id
+    title
+    status
+    updated_at
+  }
+  
+  # Delete article
+  deleted: delete_articles_item(id: $deleteId) {
+    id
+  }
+}
+```
+
+Variables:
+
+```json
+{
+  "createData": {
+    "title": "New Article",
+    "content": "Article content...",
+    "status": "draft"
+  },
+  "updateId": "123",
+  "updateData": {
+    "status": "published"
+  },
+  "deleteId": "456"
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Always Use Variables">
+    Never hardcode values in mutations. Always use variables for security and reusability:
+
+    ```graphql
+    # Good
+    mutation CreateArticle($data: create_articles_input!) {
+      create_articles_item(data: $data) {
+        id
+      }
+    }
+
+    # Avoid
+    mutation {
+      create_articles_item(data: { title: "Hardcoded" }) {
+        id
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Request Only Needed Fields">
+    Only request the fields you need in the response:
+
+    ```graphql
+    # If you only need the ID
+    mutation {
+      create_articles_item(data: { title: "New" }) {
+        id
+      }
+    }
+
+    # If you don't need any data back
+    mutation {
+      update_articles_item(id: "123", data: { views: 100 })
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Handle Errors Gracefully">
+    Always check for errors in mutation responses:
+
+    ```javascript
+    const result = await client.mutate({ mutation, variables });
+    
+    if (result.errors) {
+      console.error('Mutation failed:', result.errors);
+      // Handle errors
+    } else {
+      console.log('Success:', result.data);
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Use Transactions for Related Operations">
+    When creating or updating related items, do it in a single mutation to ensure atomicity:
+
+    ```graphql
+    mutation {
+      create_articles_item(
+        data: {
+          title: "Article"
+          categories: {
+            create: [
+              { categories_id: { name: "New Category" } }
+            ]
+          }
+        }
+      ) {
+        id
+      }
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="GraphQL Queries" icon="magnifying-glass" href="/api/graphql/queries">
+    Learn how to query your data
+  </Card>
+  
+  <Card title="GraphQL Subscriptions" icon="tower-broadcast" href="/api/graphql/subscriptions">
+    Get real-time updates with subscriptions
+  </Card>
+</CardGroup>

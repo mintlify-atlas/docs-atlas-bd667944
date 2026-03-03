@@ -1,0 +1,121 @@
+---
+title: Folders
+description: Organize files with folders
+---
+
+Folders allow you to organize files into a hierarchical structure.
+
+## List Folders
+
+Retrieve all folders.
+
+```bash
+GET /folders
+```
+
+**Example:**
+
+```bash
+curl "https://your-directus-instance.com/folders" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+## Get Folder
+
+Retrieve a single folder.
+
+```bash
+GET /folders/:id
+```
+
+## Create Folder
+
+Create a new folder.
+
+```bash
+POST /folders
+```
+
+**Request Body:**
+
+```json
+{
+  "name": "Images",
+  "parent": null
+}
+```
+
+**Example:**
+
+```bash
+curl -X POST "https://your-directus-instance.com/folders" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Documents"
+  }'
+```
+
+## Create Nested Folder
+
+Create a folder inside another folder:
+
+```json
+{
+  "name": "Photos",
+  "parent": "abc-123-def"
+}
+```
+
+## Update Folder
+
+Update folder metadata.
+
+```bash
+PATCH /folders/:id
+```
+
+**Request Body:**
+
+```json
+{
+  "name": "Updated Name"
+}
+```
+
+## Delete Folder
+
+Delete a folder.
+
+```bash
+DELETE /folders/:id
+```
+
+<Warning>
+  Deleting a folder also deletes all files within it. This action cannot be undone.
+</Warning>
+
+## Folder Properties
+
+<ResponseField name="id" type="string">
+  Unique folder identifier (UUID)
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Folder name
+</ResponseField>
+
+<ResponseField name="parent" type="string">
+  Parent folder ID (null for root)
+</ResponseField>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Files" icon="file" href="/api/rest/files">
+    Manage files
+  </Card>
+  <Card title="File Storage" icon="hard-drive" href="/features/file-storage">
+    Configure storage
+  </Card>
+</CardGroup>

@@ -1,0 +1,236 @@
+---
+title: Collections
+description: Manage collections in Directus
+---
+
+Collections are the database tables in your project. The Collections API allows you to manage collections and their metadata.
+
+## List Collections
+
+Retrieve all collections.
+
+```bash
+GET /collections
+```
+
+**Example:**
+
+```bash
+curl "https://your-directus-instance.com/collections" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+**Response:**
+
+```json
+{
+  "data": [
+    {
+      "collection": "articles",
+      "meta": {
+        "collection": "articles",
+        "icon": "article",
+        "note": "Blog articles",
+        "display_template": "{{title}}",
+        "hidden": false,
+        "singleton": false,
+        "translations": null,
+        "archive_field": "status",
+        "archive_value": "archived",
+        "unarchive_value": "draft",
+        "sort_field": "sort"
+      },
+      "schema": {
+        "name": "articles",
+        "comment": null
+      }
+    }
+  ]
+}
+```
+
+## Get Collection
+
+Retrieve a single collection.
+
+```bash
+GET /collections/:collection
+```
+
+**Example:**
+
+```bash
+curl "https://your-directus-instance.com/collections/articles" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+## Create Collection
+
+Create a new collection.
+
+```bash
+POST /collections
+```
+
+<Warning>
+  This creates a new database table. Use with caution in production.
+</Warning>
+
+**Request Body:**
+
+```json
+{
+  "collection": "posts",
+  "meta": {
+    "icon": "article",
+    "note": "Blog posts collection"
+  },
+  "schema": {
+    "name": "posts"
+  },
+  "fields": [
+    {
+      "field": "id",
+      "type": "integer",
+      "meta": {
+        "hidden": true,
+        "interface": "input",
+        "readonly": true
+      },
+      "schema": {
+        "is_primary_key": true,
+        "has_auto_increment": true
+      }
+    },
+    {
+      "field": "title",
+      "type": "string",
+      "meta": {
+        "interface": "input",
+        "required": true
+      },
+      "schema": {
+        "max_length": 255
+      }
+    }
+  ]
+}
+```
+
+## Update Collection
+
+Update collection metadata.
+
+```bash
+PATCH /collections/:collection
+```
+
+**Request Body:**
+
+```json
+{
+  "meta": {
+    "icon": "article",
+    "color": "#6644FF",
+    "note": "Updated description"
+  }
+}
+```
+
+## Delete Collection
+
+Delete a collection and all its items.
+
+```bash
+DELETE /collections/:collection
+```
+
+<Warning>
+  This permanently deletes the database table and all data. This action cannot be undone.
+</Warning>
+
+**Example:**
+
+```bash
+curl -X DELETE "https://your-directus-instance.com/collections/posts" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+## Collection Metadata
+
+<ResponseField name="collection" type="string">
+  The collection name (table name)
+</ResponseField>
+
+<ResponseField name="meta.icon" type="string">
+  Material icon name for the collection
+</ResponseField>
+
+<ResponseField name="meta.color" type="string">
+  Hex color code for the collection
+</ResponseField>
+
+<ResponseField name="meta.note" type="string">
+  Description of the collection
+</ResponseField>
+
+<ResponseField name="meta.display_template" type="string">
+  Template for displaying items (e.g., `{{title}}`)
+</ResponseField>
+
+<ResponseField name="meta.hidden" type="boolean">
+  Hide collection from the app navigation
+</ResponseField>
+
+<ResponseField name="meta.singleton" type="boolean">
+  Collection contains only one item
+</ResponseField>
+
+<ResponseField name="meta.archive_field" type="string">
+  Field name used for archiving (e.g., `status`)
+</ResponseField>
+
+<ResponseField name="meta.archive_value" type="string">
+  Value for archived items (e.g., `archived`)
+</ResponseField>
+
+<ResponseField name="meta.unarchive_value" type="string">
+  Value for active items (e.g., `draft`)
+</ResponseField>
+
+<ResponseField name="meta.sort_field" type="string">
+  Field used for manual sorting
+</ResponseField>
+
+## System Collections
+
+Directus includes built-in system collections:
+
+- `directus_activity` - Activity logs
+- `directus_collections` - Collection metadata
+- `directus_fields` - Field metadata
+- `directus_files` - File uploads
+- `directus_folders` - File folders
+- `directus_permissions` - Permissions rules
+- `directus_roles` - User roles
+- `directus_users` - Users
+- `directus_settings` - Project settings
+- `directus_flows` - Automation flows
+- `directus_operations` - Flow operations
+- `directus_dashboards` - Insights dashboards
+- `directus_panels` - Dashboard panels
+
+<Note>
+  System collections cannot be deleted or have their structure modified.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Fields" icon="input-text" href="/api/rest/fields">
+    Manage collection fields
+  </Card>
+  <Card title="Items" icon="database" href="/api/rest/items">
+    Work with collection items
+  </Card>
+</CardGroup>

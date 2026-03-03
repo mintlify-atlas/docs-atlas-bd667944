@@ -1,0 +1,67 @@
+---
+title: Panel Extensions
+description: Create custom dashboard panel types
+---
+
+Panels are visualization components for Insights dashboards.
+
+## Overview
+
+Directus includes 14+ built-in panel types like metrics, charts, lists, timelines, and more.
+
+## Creating a Panel
+
+```bash
+npm init directus-extension
+# Select "panel" as the extension type
+```
+
+## Panel Structure
+
+```typescript
+import { definePanel } from '@directus/extensions-sdk';
+
+export default definePanel({
+  id: 'my-panel',
+  name: 'My Panel',
+  icon: 'bar_chart',
+  description: 'A custom panel',
+  component: PanelComponent,
+  options: [
+    {
+      field: 'collection',
+      type: 'string',
+      name: 'Collection',
+      meta: {
+        interface: 'system-collection',
+        width: 'half',
+      },
+    },
+  ],
+  minWidth: 12,
+  minHeight: 8,
+});
+```
+
+## Component Props
+
+```typescript
+interface PanelProps {
+  showHeader: boolean;
+  width: number;
+  height: number;
+  // Your custom options
+  collection?: string;
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Displays" icon="eye" href="/extensions/displays">
+    Create display components
+  </Card>
+  <Card title="Modules" icon="grid" href="/extensions/modules">
+    Create custom modules
+  </Card>
+</CardGroup>

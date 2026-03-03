@@ -1,0 +1,90 @@
+---
+title: Operation Extensions
+description: Create custom flow operation types
+---
+
+Operations are the building blocks of flows. You can create custom operations to extend automation capabilities.
+
+## Creating an Operation
+
+```bash
+npm init directus-extension
+# Select "operation" as the extension type
+```
+
+## Operation Structure
+
+```typescript
+import { defineOperationApi } from '@directus/extensions-sdk';
+
+export default defineOperationApi({
+  id: 'my-operation',
+  handler: async ({ data }, { services, getSchema }) => {
+    const schema = await getSchema();
+    const itemsService = new services.ItemsService('articles', { schema });
+
+    // Perform your operation logic
+    const result = await itemsService.readByQuery({
+      filter: data.filter,
+    });
+
+    return result;
+  },
+});
+```
+
+## App Component
+
+Create a UI component for configuring the operation:
+
+```typescript
+import { defineOperationApp } from '@directus/extensions-sdk';
+
+export default defineOperationApp({
+  id: 'my-operation',
+  name: 'My Operation',
+  icon: 'bolt',
+  description: 'Custom operation',
+  overview: ({ filter }) => [
+    {
+      label: 'Filter',
+      text: JSON.stringify(filter),
+    },
+  ],
+  options: [
+    {
+      field: 'filter',
+      name: 'Filter',
+      type: 'json',
+      meta: {
+        interface: 'input-code',
+        options: {
+          language: 'json',
+        },
+      },
+    },
+  ],
+});
+```
+
+## Built-in Operations
+
+Directus includes operations for:
+- Item CRUD
+- HTTP requests
+- Email sending
+- Conditional logic
+- Data transformation
+- Logging
+- And more...
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Hooks" icon="webhook" href="/extensions/hooks">
+    Create server hooks
+  </Card>
+  <Card title="Endpoints" icon="code" href="/extensions/endpoints">
+    Create API endpoints
+  </Card>
+</CardGroup>

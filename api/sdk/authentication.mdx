@@ -1,0 +1,326 @@
+---
+title: "SDK Authentication"
+description: "Authenticate with Directus using the SDK"
+---
+
+## Overview
+
+The Directus SDK provides multiple authentication methods to suit different use cases. You can use full authentication with login/logout/refresh capabilities, or use a static token for server-side applications.
+
+## Authentication Methods
+
+### Static Token
+
+Use a static access token for server-side applications or when you already have a valid token.
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { createDirectus, rest, staticToken } from '@directus/sdk';
+
+const client = createDirectus<Schema>('https://your-directus-url.com')
+  .with(rest())
+  .with(staticToken('your-access-token'));
+
+// The token is automatically included in all requests
+const items = await client.request(readItems('articles'));
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { createDirectus, rest, staticToken } from '@directus/sdk';
+
+const client = createDirectus('https://your-directus-url.com')
+  .with(rest())
+  .with(staticToken('your-access-token'));
+
+const items = await client.request(readItems('articles'));
+```
+  </Tab>
+</Tabs>
+
+### Full Authentication
+
+Use the `authentication()` composable for full login/logout capabilities with automatic token refresh.
+
+#### Authentication Modes
+
+- **`cookie`** - Uses HTTP-only cookies (default, recommended for web apps)
+- **`json`** - Returns tokens in JSON response body (for mobile/desktop apps)
+
+#### Cookie Mode (Default)
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { createDirectus, rest, authentication } from '@directus/sdk';
+
+const client = createDirectus<Schema>('https://your-directus-url.com')
+  .with(rest())
+  .with(authentication('cookie'));
+
+// Login with email and password
+await client.login({
+  email: 'user@example.com',
+  password: 'password',
+});
+
+// Make authenticated requests
+const items = await client.request(readItems('articles'));
+
+// Logout
+await client.logout();
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { createDirectus, rest, authentication } from '@directus/sdk';
+
+const client = createDirectus('https://your-directus-url.com')
+  .with(rest())
+  .with(authentication('cookie'));
+
+await client.login({
+  email: 'user@example.com',
+  password: 'password',
+});
+
+const items = await client.request(readItems('articles'));
+
+await client.logout();
+```
+  </Tab>
+</Tabs>
+
+#### JSON Mode
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { createDirectus, rest, authentication } from '@directus/sdk';
+
+const client = createDirectus<Schema>('https://your-directus-url.com')
+  .with(rest())
+  .with(authentication('json'));
+
+// Login returns access and refresh tokens
+const authData = await client.login({
+  email: 'user@example.com',
+  password: 'password',
+});
+
+console.log(authData.access_token);
+console.log(authData.refresh_token);
+console.log(authData.expires); // Token lifetime in milliseconds
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { createDirectus, rest, authentication } from '@directus/sdk';
+
+const client = createDirectus('https://your-directus-url.com')
+  .with(rest())
+  .with(authentication('json'));
+
+const authData = await client.login({
+  email: 'user@example.com',
+  password: 'password',
+});
+
+console.log(authData.access_token);
+```
+  </Tab>
+</Tabs>
+
+## LDAP Authentication
+
+For LDAP authentication, provide the provider option:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+await client.login(
+  {
+    identifier: 'username',
+    password: 'password',
+  },
+  {
+    provider: 'ldap',
+  }
+);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+await client.login(
+  {
+    identifier: 'username',
+    password: 'password',
+  },
+  {
+    provider: 'ldap',
+  }
+);
+```
+  </Tab>
+</Tabs>
+
+## Two-Factor Authentication (OTP)
+
+If the user has 2FA enabled, provide the one-time password:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+await client.login(
+  {
+    email: 'user@example.com',
+    password: 'password',
+  },
+  {
+    otp: '123456',
+  }
+);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+await client.login(
+  {
+    email: 'user@example.com',
+    password: 'password',
+  },
+  {
+    otp: '123456',
+  }
+);
+```
+  </Tab>
+</Tabs>
+
+## Token Management
+
+### Get Current Token
+
+```typescript
+const token = await client.getToken();
+console.log(token);
+```
+
+### Set Token Manually
+
+```typescript
+await client.setToken('your-access-token');
+```
+
+## Automatic Token Refresh
+
+The SDK automatically refreshes tokens before they expire when using `authentication()` mode.
+
+### Configuration
+
+```typescript
+const client = createDirectus<Schema>('https://your-directus-url.com')
+  .with(rest())
+  .with(authentication('json', {
+    autoRefresh: true, // Default: true
+    msRefreshBeforeExpires: 30000, // Refresh 30s before expiry (default)
+  }));
+```
+
+### Manual Refresh
+
+```typescript
+const authData = await client.refresh();
+console.log(authData.access_token);
+```
+
+### Stop Auto-Refresh
+
+```typescript
+client.stopRefreshing();
+```
+
+## Custom Storage
+
+By default, authentication data is stored in memory. You can provide custom storage (e.g., localStorage, AsyncStorage):
+
+```typescript
+import { authentication } from '@directus/sdk';
+
+const customStorage = {
+  async get() {
+    const data = localStorage.getItem('directus-auth');
+    return data ? JSON.parse(data) : null;
+  },
+  async set(data: any) {
+    localStorage.setItem('directus-auth', JSON.stringify(data));
+  },
+};
+
+const client = createDirectus<Schema>('https://your-directus-url.com')
+  .with(rest())
+  .with(authentication('json', { storage: customStorage }));
+```
+
+## CORS Credentials
+
+For cross-origin requests with cookies:
+
+```typescript
+const client = createDirectus<Schema>('https://your-directus-url.com')
+  .with(rest({ credentials: 'include' }))
+  .with(authentication('cookie', { credentials: 'include' }));
+```
+
+## Authentication Type Signatures
+
+```typescript
+// Login payload types
+interface LocalLoginPayload {
+  email: string;
+  password: string;
+}
+
+interface LDAPLoginPayload {
+  identifier: string;
+  password: string;
+}
+
+// Login options
+interface LoginOptions {
+  provider?: string; // e.g., 'ldap'
+  otp?: string; // Two-factor code
+  mode?: 'cookie' | 'json';
+}
+
+// Authentication data response
+interface AuthenticationData {
+  access_token: string | null;
+  refresh_token: string | null;
+  expires: number | null;
+  expires_at: number | null;
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+
+<Card title="Items Operations" icon="database" href="/api/sdk/items">
+  Perform CRUD operations on collection items
+</Card>
+
+<Card title="Users" icon="users" href="/api/sdk/users">
+  Manage users and retrieve current user info
+</Card>
+
+<Card title="Files" icon="file" href="/api/sdk/files">
+  Upload and manage files
+</Card>
+
+<Card title="Real-time" icon="bolt" href="/api/sdk/real-time">
+  Subscribe to real-time updates
+</Card>
+
+</CardGroup>

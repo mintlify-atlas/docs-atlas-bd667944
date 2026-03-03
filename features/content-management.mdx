@@ -1,0 +1,320 @@
+---
+title: Content Management
+description: Manage your content efficiently with Directus's powerful content management features including versioning, revisions, and multi-user collaboration.
+---
+
+Directus provides enterprise-grade content management capabilities on top of your SQL database, enabling teams to create, edit, and publish content with full control and transparency.
+
+## Items Management
+
+Items are individual records within your collections. Directus provides full CRUD operations with advanced filtering, sorting, and querying.
+
+### Creating Items
+
+```typescript
+import { createDirectus, rest, createItem } from '@directus/sdk';
+
+const client = createDirectus('https://your-project.directus.app').with(rest());
+
+// Create a single item
+const article = await client.request(
+  createItem('articles', {
+    title: 'Getting Started with Directus',
+    content: 'Directus is a real-time API and App dashboard...',
+    status: 'published',
+    author: '2a8b9c1d-e5f3-4321-b987-1234567890ab'
+  })
+);
+
+// Create multiple items
+const articles = await client.request(
+  createItems('articles', [
+    { title: 'Article 1', status: 'draft' },
+    { title: 'Article 2', status: 'draft' }
+  ])
+);
+```
+
+### Reading Items
+
+Query items with powerful filtering and field selection:
+
+```typescript
+// Get items with filters
+const publishedArticles = await client.request(
+  readItems('articles', {
+    filter: {
+      status: { _eq: 'published' },
+      date_created: { _gte: '$NOW(-7 days)' }
+    },
+    fields: ['id', 'title', 'author.first_name', 'author.last_name'],
+    sort: ['-date_created'],
+    limit: 10
+  })
+);
+```
+
+### Updating Items
+
+```typescript
+// Update a single item
+await client.request(
+  updateItem('articles', 'article-id', {
+    status: 'published',
+    date_published: new Date().toISOString()
+  })
+);
+
+// Bulk update with filter
+await client.request(
+  updateItems('articles', {
+    filter: { status: { _eq: 'draft' } },
+    data: { status: 'archived' }
+  })
+);
+```
+
+### Deleting Items
+
+```typescript
+// Delete single item
+await client.request(deleteItem('articles', 'article-id'));
+
+// Delete multiple items
+await client.request(
+  deleteItems('articles', ['id-1', 'id-2', 'id-3'])
+);
+```
+
+## Activity Tracking
+
+Every action in Directus is automatically logged in the `directus_activity` collection, providing a complete audit trail.
+
+### Activity Log Features
+
+- **Action Types** - Create, update, delete, login, comment, upload
+- **User Attribution** - Track who performed each action
+- **Timestamps** - When actions occurred
+- **IP Tracking** - Origin of requests
+- **User Agent** - Client information
+
+### Querying Activity
+
+```typescript
+const recentActivity = await client.request(
+  readItems('directus_activity', {
+    filter: {
+      collection: { _eq: 'articles' },
+      action: { _in: ['create', 'update', 'delete'] }
+    },
+    sort: ['-timestamp'],
+    limit: 50
+  })
+);
+```
+
+## Revisions
+
+Directus automatically tracks changes to your content, creating revision snapshots for every update.
+
+### Revision Features
+
+- **Delta Tracking** - Store only what changed
+- **Full History** - Complete change timeline
+- **Point-in-Time Recovery** - Restore to any previous state
+- **Diff Comparison** - Compare versions side-by-side
+
+### Working with Revisions
+
+```typescript
+// Get all revisions for an item
+const revisions = await client.request(
+  readItems('directus_revisions', {
+    filter: {
+      collection: { _eq: 'articles' },
+      item: { _eq: 'article-id' }
+    },
+    sort: ['-id']
+  })
+);
+
+// Revert to a previous revision
+await client.request(
+  revertRevision('articles', 'article-id', 'revision-id')
+);
+```
+
+## Content Versioning
+
+Manage draft and published states with Content Versions (requires setup):
+
+```typescript
+// Create content version
+await client.request(
+  createContentVersion('articles', 'article-id', {
+    name: 'Summer 2026 Update',
+    key: 'summer-2026'
+  })
+);
+
+// Promote version to main
+await client.request(
+  promoteContentVersion('articles', 'article-id', 'summer-2026')
+);
+```
+
+## File Management
+
+Manage assets and files with full metadata support.
+
+### Uploading Files
+
+```typescript
+const formData = new FormData();
+formData.append('file', fileBlob);
+formData.append('folder', 'folder-uuid');
+formData.append('title', 'Product Photo');
+
+const file = await client.request(
+  uploadFiles(formData)
+);
+```
+
+### File Metadata
+
+Files include rich metadata:
+
+- **Storage Location** - Which storage adapter
+- **Folder** - Organizational hierarchy
+- **Title & Description** - Searchable metadata
+- **Tags** - Categorization
+- **Dimensions** - Width/height for images
+- **Duration** - Length for video/audio
+- **Filesize** - Bytes
+- **EXIF Data** - Camera and location info
+
+### Image Transformations
+
+Transform images on-the-fly:
+
+```
+https://your-project.directus.app/assets/file-id?width=800&height=600&fit=cover&quality=80
+```
+
+## Comments & Collaboration
+
+Collaborate on content with built-in commenting:
+
+```typescript
+// Add comment to an item
+await client.request(
+  createComment({
+    collection: 'articles',
+    item: 'article-id',
+    comment: 'Please review the introduction section'
+  })
+);
+
+// Subscribe to comments
+await client.request(
+  subscribeToComments('articles', 'article-id')
+);
+```
+
+## Batch Operations
+
+Perform operations on multiple items efficiently:
+
+```typescript
+// Batch create with relationships
+await client.request(
+  createItems('articles', [
+    {
+      title: 'Article 1',
+      categories: {
+        create: [{ categories_id: { name: 'Tech' } }],
+        update: [],
+        delete: []
+      }
+    }
+  ])
+);
+```
+
+## Archiving
+
+Implement soft-delete patterns:
+
+```typescript
+// Archive instead of delete
+await client.request(
+  updateItem('articles', 'article-id', {
+    status: 'archived',
+    archived_on: new Date().toISOString()
+  })
+);
+
+// Filter out archived items
+const activeArticles = await client.request(
+  readItems('articles', {
+    filter: {
+      status: { _neq: 'archived' }
+    }
+  })
+);
+```
+
+## Search & Filter
+
+Powerful querying with operators:
+
+```typescript
+const results = await client.request(
+  readItems('articles', {
+    filter: {
+      _and: [
+        {
+          _or: [
+            { title: { _contains: 'Directus' } },
+            { content: { _contains: 'Directus' } }
+          ]
+        },
+        { status: { _eq: 'published' } },
+        { date_created: { _gte: '$NOW(-30 days)' } }
+      ]
+    },
+    search: 'headless CMS'
+  })
+);
+```
+
+### Available Operators
+
+- **_eq** / **_neq** - Equal / Not equal
+- **_gt** / **_gte** / **_lt** / **_lte** - Comparisons
+- **_in** / **_nin** - In array / Not in array
+- **_contains** / **_ncontains** - String contains
+- **_starts_with** / **_ends_with** - String patterns
+- **_null** / **_nnull** - Null checks
+- **_between** / **_nbetween** - Range queries
+- **_and** / **_or** - Logical operators
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Filters Instead of Loading Everything">
+    Always filter data at the API level rather than fetching everything and filtering client-side.
+  </Accordion>
+  
+  <Accordion title="Select Only Required Fields">
+    Use the `fields` parameter to request only the data you need, reducing payload size and improving performance.
+  </Accordion>
+  
+  <Accordion title="Leverage Revisions for Critical Content">
+    Revisions provide a safety net - review changes before publishing and revert if needed.
+  </Accordion>
+  
+  <Accordion title="Organize Files with Folders">
+    Create a logical folder structure for your assets to keep them organized as your library grows.
+  </Accordion>
+</AccordionGroup>

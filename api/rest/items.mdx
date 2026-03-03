@@ -1,0 +1,330 @@
+---
+title: Items
+description: Create, read, update, and delete items in collections
+---
+
+Items are individual records in your collections. The Items API provides full CRUD operations.
+
+## List Items
+
+Retrieve multiple items from a collection.
+
+```bash
+GET /items/:collection
+```
+
+<ParamField path="collection" type="string" required>
+  The collection name
+</ParamField>
+
+**Example:**
+
+```bash
+curl "https://your-directus-instance.com/items/articles" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+**Query Parameters:**
+
+- `fields` - Select specific fields
+- `filter` - Filter items
+- `sort` - Sort results
+- `limit` - Limit number of results
+- `offset` or `page` - Pagination
+- `search` - Full-text search
+- `meta` - Include metadata (total count, filter count)
+
+**Response:**
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "title": "Hello World",
+      "status": "published"
+    }
+  ]
+}
+```
+
+## Get Item by ID
+
+Retrieve a single item by its primary key.
+
+```bash
+GET /items/:collection/:id
+```
+
+**Example:**
+
+```bash
+curl "https://your-directus-instance.com/items/articles/1" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+## Create Item
+
+Create a new item in a collection.
+
+```bash
+POST /items/:collection
+```
+
+**Request Body:**
+
+```json
+{
+  "title": "My New Article",
+  "status": "draft",
+  "body": "Article content..."
+}
+```
+
+**Example:**
+
+```bash
+curl -X POST "https://your-directus-instance.com/items/articles" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "My New Article",
+    "status": "draft"
+  }'
+```
+
+## Create Multiple Items
+
+Create multiple items in a single request.
+
+```bash
+POST /items/:collection
+```
+
+**Request Body:**
+
+```json
+[
+  { "title": "Article 1", "status": "draft" },
+  { "title": "Article 2", "status": "draft" }
+]
+```
+
+## Update Item
+
+Update an existing item.
+
+```bash
+PATCH /items/:collection/:id
+```
+
+**Request Body:**
+
+```json
+{
+  "status": "published",
+  "published_date": "2024-03-03"
+}
+```
+
+**Example:**
+
+```bash
+curl -X PATCH "https://your-directus-instance.com/items/articles/1" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "published"
+  }'
+```
+
+## Update Multiple Items
+
+Update multiple items with a single request.
+
+```bash
+PATCH /items/:collection
+```
+
+**Request Body:**
+
+```json
+{
+  "keys": [1, 2, 3],
+  "data": {
+    "status": "archived"
+  }
+}
+```
+
+## Delete Item
+
+Delete an item.
+
+```bash
+DELETE /items/:collection/:id
+```
+
+**Example:**
+
+```bash
+curl -X DELETE "https://your-directus-instance.com/items/articles/1" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+## Delete Multiple Items
+
+Delete multiple items.
+
+```bash
+DELETE /items/:collection
+```
+
+**Request Body:**
+
+```json
+[1, 2, 3]
+```
+
+## Advanced Filtering
+
+### Comparison Operators
+
+```bash
+# Equal
+GET /items/articles?filter[status][_eq]=published
+
+# Not equal
+GET /items/articles?filter[status][_neq]=draft
+
+# Greater than
+GET /items/articles?filter[views][_gt]=1000
+
+# Contains
+GET /items/articles?filter[title][_contains]=directus
+
+# In array
+GET /items/articles?filter[status][_in]=published,archived
+```
+
+### Logical Operators
+
+```bash
+# AND
+GET /items/articles?filter[_and][0][status][_eq]=published&filter[_and][1][views][_gte]=100
+
+# OR
+GET /items/articles?filter[_or][0][status][_eq]=published&filter[_or][1][status][_eq]=archived
+```
+
+### Nested Filtering
+
+```bash
+# Filter by related field
+GET /items/articles?filter[author][name][_eq]=John
+```
+
+## Sorting
+
+```bash
+# Ascending
+GET /items/articles?sort=title
+
+# Descending
+GET /items/articles?sort=-date_created
+
+# Multiple fields
+GET /items/articles?sort=status,-date_created
+```
+
+## Pagination
+
+### Limit & Offset
+
+```bash
+GET /items/articles?limit=25&offset=50
+```
+
+### Page & Limit
+
+```bash
+GET /items/articles?page=3&limit=25
+```
+
+### Metadata
+
+```bash
+GET /items/articles?meta=total_count,filter_count
+```
+
+**Response:**
+
+```json
+{
+  "data": [...],
+  "meta": {
+    "total_count": 156,
+    "filter_count": 42
+  }
+}
+```
+
+## Field Selection
+
+```bash
+# Specific fields
+GET /items/articles?fields=id,title,status
+
+# All fields
+GET /items/articles?fields=*
+
+# Related fields
+GET /items/articles?fields=*,author.name,author.email
+
+# Nested relationships
+GET /items/articles?fields=*,author.*,author.role.name
+```
+
+## Search
+
+Full-text search across all fields:
+
+```bash
+GET /items/articles?search=directus
+```
+
+## Aggregation
+
+```bash
+# Count
+GET /items/articles?aggregate[count]=id
+
+# Sum
+GET /items/articles?aggregate[sum]=views
+
+# Average
+GET /items/articles?aggregate[avg]=rating
+
+# Min/Max
+GET /items/articles?aggregate[min]=date_created&aggregate[max]=date_created
+```
+
+## Revisions
+
+Access item revision history:
+
+```bash
+GET /items/articles/1/revisions
+GET /items/articles/1/revisions/:revision_id
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Collections" icon="layer-group" href="/api/rest/collections">
+    Manage collections
+  </Card>
+  <Card title="Fields" icon="input-text" href="/api/rest/fields">
+    Manage fields
+  </Card>
+</CardGroup>

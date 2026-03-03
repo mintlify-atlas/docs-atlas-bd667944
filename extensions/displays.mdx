@@ -1,0 +1,70 @@
+---
+title: Display Extensions
+description: Create custom ways to display field values
+---
+
+Displays are read-only representations of field values in the admin app.
+
+## Overview
+
+Directus includes 21 built-in displays for different data types like text, images, dates, ratings, and more.
+
+## Creating a Display
+
+```bash
+npm init directus-extension
+# Select "display" as the extension type
+```
+
+## Display Structure
+
+```typescript
+import { defineDisplay } from '@directus/extensions-sdk';
+
+export default defineDisplay({
+  id: 'my-display',
+  name: 'My Display',
+  icon: 'label',
+  description: 'A custom display',
+  component: DisplayComponent,
+  options: [],
+  types: ['string'],
+});
+```
+
+## Component
+
+```vue
+<template>
+  <div class="my-display">
+    {{ formattedValue }}
+  </div>
+</template>
+
+<script>
+export default {
+  props: {
+    value: {
+      type: String,
+      default: null,
+    },
+  },
+  computed: {
+    formattedValue() {
+      return this.value?.toUpperCase() || '-';
+    },
+  },
+};
+</script>
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Interfaces" icon="input-text" href="/extensions/interfaces">
+    Create input interfaces
+  </Card>
+  <Card title="Panels" icon="chart-simple" href="/extensions/panels">
+    Create dashboard panels
+  </Card>
+</CardGroup>

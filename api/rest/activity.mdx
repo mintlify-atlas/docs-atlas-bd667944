@@ -1,0 +1,112 @@
+---
+title: Activity
+description: View activity logs and revisions
+---
+
+The Activity API provides access to audit logs and revision history.
+
+## List Activity
+
+Retrieve activity logs.
+
+```bash
+GET /activity
+```
+
+**Example:**
+
+```bash
+curl "https://your-directus-instance.com/activity" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+**Query Parameters:**
+
+```bash
+# Filter by user
+GET /activity?filter[user][_eq]=user-uuid
+
+# Filter by action
+GET /activity?filter[action][_eq]=create
+
+# Filter by collection
+GET /activity?filter[collection][_eq]=articles
+
+# Sort by timestamp
+GET /activity?sort=-timestamp
+```
+
+## Get Activity
+
+Retrieve a single activity log.
+
+```bash
+GET /activity/:id
+```
+
+## Activity Properties
+
+<ResponseField name="id" type="integer">
+  Activity ID
+</ResponseField>
+
+<ResponseField name="action" type="string">
+  Action performed: `create`, `update`, `delete`, `login`
+</ResponseField>
+
+<ResponseField name="user" type="string">
+  User UUID who performed the action
+</ResponseField>
+
+<ResponseField name="timestamp" type="string">
+  When the action occurred
+</ResponseField>
+
+<ResponseField name="ip" type="string">
+  IP address
+</ResponseField>
+
+<ResponseField name="user_agent" type="string">
+  User agent string
+</ResponseField>
+
+<ResponseField name="collection" type="string">
+  Collection affected
+</ResponseField>
+
+<ResponseField name="item" type="string">
+  Item ID affected
+</ResponseField>
+
+<ResponseField name="comment" type="string">
+  Optional comment
+</ResponseField>
+
+## Create Comment
+
+Add a comment to an item:
+
+```bash
+POST /activity/comment
+```
+
+**Request Body:**
+
+```json
+{
+  "collection": "articles",
+  "item": "1",
+  "comment": "Looks good!"
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Items" icon="database" href="/api/rest/items">
+    Manage items
+  </Card>
+  <Card title="Users" icon="users" href="/api/rest/users">
+    Manage users
+  </Card>
+</CardGroup>

@@ -1,0 +1,80 @@
+---
+title: Module Extensions
+description: Create full custom pages and navigation sections
+---
+
+Modules add entirely new sections to the Directus admin app with their own navigation and pages.
+
+## Overview
+
+Modules are the most powerful extension type, allowing you to create complete custom experiences within Directus.
+
+## Creating a Module
+
+```bash
+npm init directus-extension
+# Select "module" as the extension type
+```
+
+## Module Structure
+
+```typescript
+import { defineModule } from '@directus/extensions-sdk';
+import ModuleComponent from './module.vue';
+
+export default defineModule({
+  id: 'my-module',
+  name: 'My Module',
+  icon: 'box',
+  routes: [
+    {
+      path: '',
+      component: ModuleComponent,
+    },
+  ],
+});
+```
+
+## Module Component
+
+```vue
+<template>
+  <private-view title="My Module">
+    <template #headline>Custom Module</template>
+    <template #title-outer:prepend>
+      <v-button class="header-icon" rounded icon secondary>
+        <v-icon name="box" />
+      </v-button>
+    </template>
+
+    <template #actions>
+      <v-button @click="handleAction">Action</v-button>
+    </template>
+
+    <div class="content">
+      <!-- Your module content -->
+    </div>
+  </private-view>
+</template>
+
+<script>
+export default {
+  methods: {
+    handleAction() {
+      // Handle action
+    },
+  },
+};
+</script>
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Operations" icon="diagram-project" href="/extensions/operations">
+    Create flow operations
+  </Card>
+  <Card title="Hooks" icon="webhook" href="/extensions/hooks">
+    Create server hooks
+  </Card>
+</CardGroup>

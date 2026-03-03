@@ -1,0 +1,320 @@
+---
+title: Cloudinary Storage
+description: Configure Cloudinary media management platform in Directus for advanced image and video processing.
+---
+
+The Cloudinary storage driver integrates with Cloudinary's media management platform, providing powerful image and video transformations, optimization, and delivery through a global CDN.
+
+## Installation
+
+The Cloudinary driver is included by default with Directus via the `@directus/storage-driver-cloudinary` package.
+
+## Configuration
+
+Configure Cloudinary storage using environment variables:
+
+```bash
+# Define storage location
+STORAGE_LOCATIONS="cloudinary"
+
+# Configure Cloudinary driver
+STORAGE_CLOUDINARY_DRIVER="cloudinary"
+STORAGE_CLOUDINARY_CLOUD_NAME="your-cloud-name"
+STORAGE_CLOUDINARY_API_KEY="your-api-key"
+STORAGE_CLOUDINARY_API_SECRET="your-api-secret"
+STORAGE_CLOUDINARY_ACCESS_MODE="public"
+```
+
+### Configuration Options
+
+<ParamField path="cloudName" type="string" required>
+  Your Cloudinary cloud name. Find this in your Cloudinary dashboard.
+</ParamField>
+
+<ParamField path="apiKey" type="string" required>
+  Your Cloudinary API key.
+</ParamField>
+
+<ParamField path="apiSecret" type="string" required>
+  Your Cloudinary API secret.
+</ParamField>
+
+<ParamField path="accessMode" type="'public' | 'authenticated'" required>
+  Access mode for uploaded files. `public` allows direct URL access, `authenticated` requires signed URLs.
+</ParamField>
+
+<ParamField path="root" type="string">
+  Optional path prefix for organizing files within Cloudinary.
+</ParamField>
+
+<ParamField path="tus.enabled" type="boolean">
+  Enable TUS resumable uploads. Default: `false`.
+</ParamField>
+
+<ParamField path="tus.chunkSize" type="number">
+  Chunk size for resumable uploads in bytes. Minimum: `5242880` (5 MiB). Only used when TUS is enabled.
+</ParamField>
+
+## Examples
+
+### Basic Configuration
+
+```bash
+STORAGE_LOCATIONS="cloudinary"
+STORAGE_CLOUDINARY_DRIVER="cloudinary"
+STORAGE_CLOUDINARY_CLOUD_NAME="demo"
+STORAGE_CLOUDINARY_API_KEY="123456789012345"
+STORAGE_CLOUDINARY_API_SECRET="abcdefghijklmnopqrstuvwxyz123456"
+STORAGE_CLOUDINARY_ACCESS_MODE="public"
+```
+
+### Authenticated Access
+
+```bash
+STORAGE_LOCATIONS="cloudinary"
+STORAGE_CLOUDINARY_DRIVER="cloudinary"
+STORAGE_CLOUDINARY_CLOUD_NAME="your-cloud"
+STORAGE_CLOUDINARY_API_KEY="your-api-key"
+STORAGE_CLOUDINARY_API_SECRET="your-api-secret"
+STORAGE_CLOUDINARY_ACCESS_MODE="authenticated"
+```
+
+### With Root Path
+
+```bash
+STORAGE_LOCATIONS="cloudinary"
+STORAGE_CLOUDINARY_DRIVER="cloudinary"
+STORAGE_CLOUDINARY_CLOUD_NAME="your-cloud"
+STORAGE_CLOUDINARY_API_KEY="your-api-key"
+STORAGE_CLOUDINARY_API_SECRET="your-api-secret"
+STORAGE_CLOUDINARY_ACCESS_MODE="public"
+STORAGE_CLOUDINARY_ROOT="directus/production"
+```
+
+### With Resumable Uploads
+
+```bash
+STORAGE_LOCATIONS="cloudinary"
+STORAGE_CLOUDINARY_DRIVER="cloudinary"
+STORAGE_CLOUDINARY_CLOUD_NAME="your-cloud"
+STORAGE_CLOUDINARY_API_KEY="your-api-key"
+STORAGE_CLOUDINARY_API_SECRET="your-api-secret"
+STORAGE_CLOUDINARY_ACCESS_MODE="public"
+STORAGE_CLOUDINARY_TUS__ENABLED="true"
+STORAGE_CLOUDINARY_TUS__CHUNK_SIZE="10485760"  # 10 MiB
+```
+
+## Features
+
+### Resource Types
+
+Cloudinary automatically detects resource types from `/packages/storage-driver-cloudinary/src/index.ts:96-101`:
+- **Image** - `.jpg`, `.png`, `.gif`, `.webp`, `.bmp`, `.svg`, `.ico`, `.heic`
+- **Video** - `.mp4`, `.mov`, `.avi`, `.mkv`, `.webm`, `.flv`, `.m3u8`
+- **Raw** - All other file types
+
+Each type has different API endpoints and transformation capabilities.
+
+### Resumable Uploads
+
+The Cloudinary driver supports TUS resumable uploads from `/packages/storage-driver-cloudinary/src/index.ts:25-519`:
+- Minimum chunk size: 5 MiB (enforced by Cloudinary)
+- Chunks uploaded with unique upload ID
+- Supports concurrent chunk uploads (max 10 concurrent)
+- Automatic chunk accumulation for optimal size
+
+### Chunked Upload Implementation
+
+From `/packages/storage-driver-cloudinary/src/index.ts:256-347`:
+- Automatically splits streams into 5.5 MiB chunks
+- Concurrent upload with queue management
+- Content-Range headers for chunk positioning
+- Unique upload ID for session tracking
+
+### Signed URLs
+
+For authenticated mode, the driver generates signed URLs from `/packages/storage-driver-cloudinary/src/index.ts:82-86`:
+- SHA-256 signature generation
+- Parameter-based signatures for delivery
+- Automatic signature verification by Cloudinary
+
+### Transformations
+
+Cloudinary provides powerful URL-based transformations:
+- Image resizing, cropping, and effects
+- Video transcoding and adaptive streaming
+- Format conversion and optimization
+- Face detection and content-aware cropping
+
+Note: Transformations are applied via URL parameters when accessing files, not during upload.
+
+## Implementation Details
+
+The Cloudinary driver (`DriverCloudinary` class) from `/packages/storage-driver-cloudinary/src/index.ts:25-519`:
+
+- Uses SHA-256 for signature generation
+- Implements chunked uploads with queue management
+- Automatic resource type detection
+- Public ID extraction (removes extensions for images/videos)
+- Folder path handling for organization
+
+### Upload Process
+
+1. Files are automatically categorized by type
+2. Timestamp-based signatures prevent replay attacks
+3. Chunks uploaded with Content-Range headers
+4. Final chunk triggers Cloudinary processing
+5. Asset folder structure maintained
+
+## Best Practices
+
+### API Credentials
+
+Securely manage your credentials:
+
+```bash
+# Use secrets management
+export STORAGE_CLOUDINARY_API_SECRET="$(cat /run/secrets/cloudinary_secret)"
+```
+
+Rotate API keys periodically from the Cloudinary dashboard.
+
+### Access Mode
+
+Choose the appropriate access mode:
+
+- **Public** - For publicly accessible content (blogs, marketing sites)
+- **Authenticated** - For private content requiring signed URLs
+
+### Asset Organization
+
+Use folders and tags for organization:
+
+```bash
+# Organize by environment
+STORAGE_CLOUDINARY_ROOT="production/uploads"
+
+# Or by content type
+STORAGE_CLOUDINARY_ROOT="user-content"
+```
+
+### Cloudinary Upload Presets
+
+Create upload presets in Cloudinary dashboard for:
+- Automatic format conversion
+- Quality optimization
+- Automatic tagging
+- Transformation defaults
+
+Note: The driver uses API-based uploads. Presets are not currently configurable via environment variables.
+
+### Resource Management
+
+From `/packages/storage-driver-cloudinary/src/index.ts:107-112`:
+- Images and videos have extensions removed from public ID
+- Raw files keep full filename with extension
+- Folder paths separated from filename in API calls
+
+### Performance Optimization
+
+- Use Cloudinary's CDN for global delivery
+- Enable auto-format for optimal file formats
+- Implement lazy loading for images
+- Use responsive images with transformations
+- Cache transformed assets
+
+### Quota Management
+
+Monitor your Cloudinary usage:
+- Transformations count
+- Storage space
+- Bandwidth usage
+- API requests
+
+Set up alerts in Cloudinary dashboard.
+
+## Advanced Features
+
+### Image Transformations
+
+Access transformed images via URL:
+
+```
+https://res.cloudinary.com/{cloud_name}/image/upload/w_300,h_200,c_fill/folder/image.jpg
+```
+
+### Video Streaming
+
+Cloudinary provides adaptive bitrate streaming:
+
+```
+https://res.cloudinary.com/{cloud_name}/video/upload/q_auto/folder/video.mp4
+```
+
+### Auto-optimization
+
+Enable automatic optimization in URLs:
+- `q_auto` - Automatic quality
+- `f_auto` - Automatic format selection
+- `dpr_auto` - Device pixel ratio adjustment
+
+## Troubleshooting
+
+### Authentication Errors
+
+1. Verify cloud name, API key, and secret are correct
+2. Check for extra whitespace in credentials
+3. Ensure API access is enabled in Cloudinary dashboard
+4. Verify signature generation matches Cloudinary's requirements
+
+### Upload Failures
+
+1. Check file type is supported
+2. Verify account has available quota
+3. Ensure chunk size is at least 5 MiB
+4. Check Cloudinary service status
+
+### Invalid Chunk Size Error
+
+From `/packages/storage-driver-cloudinary/src/index.ts:40-42`:
+- Minimum chunk size is 5 MiB (5242880 bytes)
+- Reduce if using larger value causing issues
+- Increase for better performance with large files
+
+### Public ID Issues
+
+1. Special characters may need URL encoding
+2. Public IDs have length limits (255 characters)
+3. Forward slashes create folder structure
+4. Extensions handled differently by resource type
+
+### Signed URL Access
+
+For authenticated mode:
+1. Ensure signature parameter is included
+2. Check timestamp hasn't expired
+3. Verify access mode configuration matches
+4. Test with Cloudinary's URL debugger
+
+### Rate Limiting
+
+If experiencing rate limits:
+1. Reduce concurrent upload queue size
+2. Implement retry logic with exponential backoff
+3. Upgrade Cloudinary plan for higher limits
+4. Optimize upload patterns
+
+## Cloudinary Dashboard
+
+Access advanced features in the Cloudinary dashboard:
+- Media library browser
+- Transformation builder
+- Upload presets
+- Add-ons (AI, auto-tagging, etc.)
+- Analytics and reports
+
+## Related
+
+- [Storage Overview](/storage/overview)
+- [S3 Storage](/storage/s3)
+- [Supabase Storage](/storage/supabase)

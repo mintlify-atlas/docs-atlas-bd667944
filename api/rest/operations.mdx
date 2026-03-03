@@ -1,0 +1,114 @@
+---
+title: Operations
+description: Manage flow operations
+---
+
+Operations are the building blocks within flows.
+
+## List Operations
+
+```bash
+GET /operations
+```
+
+**Example:**
+
+```bash
+curl "https://your-directus-instance.com/operations" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+## Get Operation
+
+```bash
+GET /operations/:id
+```
+
+## Create Operation
+
+```bash
+POST /operations
+```
+
+**Request Body:**
+
+```json
+{
+  "name": "Send Email",
+  "key": "send_email",
+  "type": "mail",
+  "position_x": 10,
+  "position_y": 10,
+  "options": {
+    "to": "user@example.com",
+    "subject": "Welcome",
+    "body": "Hello {{$trigger.name}}!"
+  },
+  "flow": "flow-uuid"
+}
+```
+
+## Update Operation
+
+```bash
+PATCH /operations/:id
+```
+
+## Delete Operation
+
+```bash
+DELETE /operations/:id
+```
+
+## Operation Types
+
+- **Condition** - Conditional logic
+- **Exec** - Execute Node.js code
+- **Item Create** - Create items
+- **Item Read** - Read items
+- **Item Update** - Update items
+- **Item Delete** - Delete items
+- **Log** - Log messages
+- **Mail** - Send emails
+- **Notification** - Send notifications
+- **Request** - HTTP requests
+- **Sleep** - Delay execution
+- **Transform** - Transform data
+- **Trigger** - Trigger another flow
+
+## Operation Properties
+
+<ResponseField name="id" type="string">
+  Operation UUID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Operation name
+</ResponseField>
+
+<ResponseField name="key" type="string">
+  Unique key for referencing
+</ResponseField>
+
+<ResponseField name="type" type="string">
+  Operation type
+</ResponseField>
+
+<ResponseField name="flow" type="string">
+  Parent flow UUID
+</ResponseField>
+
+<ResponseField name="options" type="object">
+  Operation-specific configuration
+</ResponseField>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Flows" icon="bolt" href="/api/rest/flows">
+    Manage flows
+  </Card>
+  <Card title="Flow Automation" icon="diagram-project" href="/features/flows-automation">
+    Learn about automation
+  </Card>
+</CardGroup>

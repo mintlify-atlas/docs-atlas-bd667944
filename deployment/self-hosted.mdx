@@ -1,0 +1,496 @@
+---
+title: Self-Hosted Deployment
+description: Deploy and manage Directus on your own infrastructure with complete control over your data and configuration.
+---
+
+Self-hosting Directus gives you complete control over your data, infrastructure, and deployment environment. This guide covers deploying Directus on your own servers.
+
+## Requirements
+
+Before deploying Directus, ensure your environment meets these requirements:
+
+### System Requirements
+
+- **Node.js**: Version 22 or higher
+- **Package Manager**: pnpm 10.x (recommended) or npm
+- **Operating System**: Linux, macOS, or Windows Server
+- **Memory**: Minimum 512MB RAM (2GB+ recommended)
+
+### Database Support
+
+Directus works with any of these SQL databases:
+
+- **PostgreSQL** 13+ (recommended)
+- **MySQL** 8.0+ or 5.7+
+- **MariaDB** 11.4+
+- **SQLite** 3.x (development only)
+- **Microsoft SQL Server** 2019+
+- **OracleDB** 18+
+- **CockroachDB** 24.3+
+
+### Optional Services
+
+- **Redis**: For caching and rate limiting
+- **S3-compatible Storage**: For file storage (AWS S3, MinIO, etc.)
+- **SMTP Server**: For email notifications
+
+## Installation Methods
+
+<CodeGroup>
+```bash npm
+npm install directus
+```
+
+```bash pnpm
+pnpm add directus
+```
+
+```bash yarn
+yarn add directus
+```
+</CodeGroup>
+
+## Quick Start
+
+<Steps>
+  <Step title="Install Directus">
+    Create a new directory and install Directus:
+    ```bash
+    mkdir my-directus-project
+    cd my-directus-project
+    pnpm init
+    pnpm add directus
+    ```
+  </Step>
+
+  <Step title="Configure Environment">
+    Create a `.env` file with your database configuration:
+    ```bash
+    # Database
+    DB_CLIENT=postgres
+    DB_HOST=localhost
+    DB_PORT=5432
+    DB_DATABASE=directus
+    DB_USER=postgres
+    DB_PASSWORD=your-password
+
+    # Security
+    SECRET=replace-with-random-secret
+
+    # Admin User (first time only)
+    ADMIN_EMAIL=admin@example.com
+    ADMIN_PASSWORD=your-secure-password
+    ```
+  </Step>
+
+  <Step title="Bootstrap Database">
+    Initialize the database and create admin user:
+    ```bash
+    npx directus bootstrap
+    ```
+  </Step>
+
+  <Step title="Start Directus">
+    Launch the Directus server:
+    ```bash
+    npx directus start
+    ```
+    Your Directus instance will be available at `http://localhost:8055`
+  </Step>
+</Steps>
+
+## Database Configuration
+
+Configure your database connection using environment variables:
+
+<CodeGroup>
+```bash PostgreSQL
+DB_CLIENT=postgres
+DB_HOST=localhost
+DB_PORT=5432
+DB_DATABASE=directus
+DB_USER=postgres
+DB_PASSWORD=your-password
+DB_SSL=false
+```
+
+```bash MySQL
+DB_CLIENT=mysql
+DB_HOST=localhost
+DB_PORT=3306
+DB_DATABASE=directus
+DB_USER=root
+DB_PASSWORD=your-password
+```
+
+```bash MariaDB
+DB_CLIENT=mysql
+DB_HOST=localhost
+DB_PORT=3306
+DB_DATABASE=directus
+DB_USER=root
+DB_PASSWORD=your-password
+```
+
+```bash SQLite
+DB_CLIENT=sqlite3
+DB_FILENAME=/directus/database/database.sqlite
+```
+
+```bash MS SQL Server
+DB_CLIENT=mssql
+DB_HOST=localhost
+DB_PORT=1433
+DB_DATABASE=directus
+DB_USER=sa
+DB_PASSWORD=your-password
+```
+
+```bash CockroachDB
+DB_CLIENT=cockroachdb
+DB_HOST=localhost
+DB_PORT=26257
+DB_DATABASE=directus
+DB_USER=root
+```
+</CodeGroup>
+
+## Production Deployment
+
+### Using PM2
+
+PM2 is a production process manager for Node.js applications:
+
+<Steps>
+  <Step title="Install PM2">
+    ```bash
+    npm install -g pm2
+    ```
+  </Step>
+
+  <Step title="Create Ecosystem File">
+    Create `ecosystem.config.cjs` in your project root:
+    ```javascript
+    module.exports = {
+      apps: [
+        {
+          name: 'directus',
+          script: './node_modules/.bin/directus',
+          args: 'start',
+          env: {
+            NODE_ENV: 'production',
+          },
+          instances: 'max',
+          exec_mode: 'cluster',
+          autorestart: true,
+          max_memory_restart: '1G',
+        },
+      ],
+    };
+    ```
+  </Step>
+
+  <Step title="Start with PM2">
+    ```bash
+    pm2 start ecosystem.config.cjs
+    pm2 save
+    pm2 startup
+    ```
+  </Step>
+</Steps>
+
+### Using systemd
+
+For Linux systems with systemd:
+
+<Steps>
+  <Step title="Create Service File">
+    Create `/etc/systemd/system/directus.service`:
+    ```ini
+    [Unit]
+    Description=Directus
+    After=network.target
+
+    [Service]
+    Type=simple
+    User=directus
+    WorkingDirectory=/var/www/directus
+    ExecStart=/usr/bin/node /var/www/directus/node_modules/.bin/directus start
+    Restart=on-failure
+    Environment=NODE_ENV=production
+
+    [Install]
+    WantedBy=multi-user.target
+    ```
+  </Step>
+
+  <Step title="Enable and Start">
+    ```bash
+    sudo systemctl enable directus
+    sudo systemctl start directus
+    sudo systemctl status directus
+    ```
+  </Step>
+</Steps>
+
+## Reverse Proxy Setup
+
+### Nginx
+
+Configure Nginx as a reverse proxy:
+
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;
+
+    location / {
+        proxy_pass http://localhost:8055;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
+
+### Apache
+
+Configure Apache with mod_proxy:
+
+```apache
+<VirtualHost *:80>
+    ServerName your-domain.com
+
+    ProxyPreserveHost On
+    ProxyPass / http://localhost:8055/
+    ProxyPassReverse / http://localhost:8055/
+
+    <Location />
+        Require all granted
+    </Location>
+</VirtualHost>
+```
+
+### Caddy
+
+Caddy configuration with automatic HTTPS:
+
+```caddy
+your-domain.com {
+    reverse_proxy localhost:8055
+}
+```
+
+## SSL/TLS Configuration
+
+Secure your Directus instance with HTTPS:
+
+### Using Let's Encrypt with Certbot
+
+```bash
+# Install certbot
+sudo apt install certbot python3-certbot-nginx
+
+# Obtain certificate
+sudo certbot --nginx -d your-domain.com
+
+# Auto-renewal
+sudo certbot renew --dry-run
+```
+
+### Update Directus Configuration
+
+Set the public URL to use HTTPS:
+
+```bash
+PUBLIC_URL=https://your-domain.com
+```
+
+## Storage Configuration
+
+Configure file storage for uploads:
+
+<CodeGroup>
+```bash Local Storage
+STORAGE_LOCATIONS=local
+STORAGE_LOCAL_DRIVER=local
+STORAGE_LOCAL_ROOT=./uploads
+```
+
+```bash AWS S3
+STORAGE_LOCATIONS=s3
+STORAGE_S3_DRIVER=s3
+STORAGE_S3_KEY=your-access-key
+STORAGE_S3_SECRET=your-secret-key
+STORAGE_S3_BUCKET=your-bucket-name
+STORAGE_S3_REGION=us-east-1
+```
+
+```bash DigitalOcean Spaces
+STORAGE_LOCATIONS=spaces
+STORAGE_SPACES_DRIVER=s3
+STORAGE_SPACES_KEY=your-access-key
+STORAGE_SPACES_SECRET=your-secret-key
+STORAGE_SPACES_BUCKET=your-space-name
+STORAGE_SPACES_REGION=nyc3
+STORAGE_SPACES_ENDPOINT=https://nyc3.digitaloceanspaces.com
+```
+
+```bash Azure Blob Storage
+STORAGE_LOCATIONS=azure
+STORAGE_AZURE_DRIVER=azure
+STORAGE_AZURE_CONTAINER_NAME=your-container
+STORAGE_AZURE_ACCOUNT_NAME=your-account
+STORAGE_AZURE_ACCOUNT_KEY=your-key
+```
+</CodeGroup>
+
+## Email Configuration
+
+Set up email for password resets and notifications:
+
+<CodeGroup>
+```bash SMTP
+EMAIL_FROM=noreply@example.com
+EMAIL_TRANSPORT=smtp
+EMAIL_SMTP_HOST=smtp.example.com
+EMAIL_SMTP_PORT=587
+EMAIL_SMTP_USER=your-username
+EMAIL_SMTP_PASSWORD=your-password
+EMAIL_SMTP_SECURE=false
+```
+
+```bash SendGrid
+EMAIL_FROM=noreply@example.com
+EMAIL_TRANSPORT=smtp
+EMAIL_SMTP_HOST=smtp.sendgrid.net
+EMAIL_SMTP_PORT=587
+EMAIL_SMTP_USER=apikey
+EMAIL_SMTP_PASSWORD=your-sendgrid-api-key
+```
+
+```bash AWS SES
+EMAIL_FROM=noreply@example.com
+EMAIL_TRANSPORT=ses
+EMAIL_SES_CREDENTIALS__ACCESS_KEY_ID=your-access-key
+EMAIL_SES_CREDENTIALS__SECRET_ACCESS_KEY=your-secret-key
+EMAIL_SES_REGION=us-east-1
+```
+</CodeGroup>
+
+## Monitoring and Logging
+
+Configure logging for production:
+
+```bash
+# Log level (error, warn, info, debug)
+LOG_LEVEL=info
+
+# Log style (pretty, raw, json)
+LOG_STYLE=json
+
+# Ignore health check endpoints
+LOG_HTTP_IGNORE_PATHS=/server/health
+```
+
+## Backup Strategy
+
+Implement regular backups:
+
+### Database Backups
+
+```bash
+# PostgreSQL backup
+pg_dump -U postgres directus > directus-backup-$(date +%Y%m%d).sql
+
+# MySQL backup
+mysqldump -u root -p directus > directus-backup-$(date +%Y%m%d).sql
+```
+
+### File Storage Backups
+
+```bash
+# Local storage backup
+tar -czf uploads-backup-$(date +%Y%m%d).tar.gz ./uploads
+
+# S3 sync
+aws s3 sync ./uploads s3://your-backup-bucket/uploads
+```
+
+## Scaling Considerations
+
+### Horizontal Scaling
+
+Run multiple Directus instances behind a load balancer:
+
+- Use Redis for session storage and caching
+- Use S3-compatible storage (not local filesystem)
+- Enable database connection pooling
+- Configure sticky sessions on load balancer
+
+### Performance Optimization
+
+```bash
+# Enable caching
+CACHE_ENABLED=true
+CACHE_STORE=redis
+CACHE_TTL=30m
+
+# Redis configuration
+REDIS=redis://localhost:6379
+
+# Rate limiting
+RATE_LIMITER_ENABLED=true
+RATE_LIMITER_STORE=redis
+RATE_LIMITER_POINTS=50
+RATE_LIMITER_DURATION=1
+```
+
+## Security Best Practices
+
+1. **Use Strong Secrets**: Generate cryptographically secure random strings for `SECRET`
+2. **Enable HTTPS**: Always use SSL/TLS in production
+3. **Configure CORS**: Restrict origins to your application domains
+4. **Rate Limiting**: Enable rate limiting to prevent abuse
+5. **Regular Updates**: Keep Directus and dependencies updated
+6. **Firewall**: Restrict database access to application servers only
+7. **Backups**: Implement automated backup strategy
+
+## Troubleshooting
+
+### Check Logs
+
+```bash
+# PM2 logs
+pm2 logs directus
+
+# systemd logs
+sudo journalctl -u directus -f
+```
+
+### Health Check
+
+Verify Directus is running:
+
+```bash
+curl http://localhost:8055/server/health
+```
+
+### Common Issues
+
+- **Port already in use**: Change `PORT` in `.env` file
+- **Database connection failed**: Verify database credentials and host
+- **Permission denied**: Ensure user has write access to uploads directory
+- **Out of memory**: Increase server memory or reduce `max_memory_restart`
+
+## Next Steps
+
+- Configure [authentication providers](/deployment/configuration#authentication)
+- Set up [file storage](/deployment/configuration#storage)
+- Enable [caching and optimization](/deployment/configuration#cache)
+- Review [environment variables](/deployment/configuration)

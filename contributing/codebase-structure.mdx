@@ -1,0 +1,297 @@
+---
+title: Codebase Structure
+description: Understanding the Directus monorepo structure and architecture
+---
+
+Directus is a real-time API and App dashboard for managing SQL database content. The codebase is organized as a pnpm monorepo with multiple packages.
+
+## Monorepo Overview
+
+The Directus repository uses pnpm workspaces to manage multiple packages in a single repository. This allows for efficient dependency management and code sharing across packages.
+
+### Workspace Structure
+
+The monorepo includes the following workspace packages (defined in `pnpm-workspace.yaml`):
+
+```yaml
+packages:
+  - directus        # Main Directus package
+  - app             # Vue 3 dashboard application
+  - api             # Node.js backend
+  - sdk             # TypeScript SDK
+  - packages/*      # 35+ shared packages
+  - tests/*         # Test suites
+```
+
+## Main Directories
+
+### `/api` - Backend API
+
+The Node.js backend powered by Express.js and Knex.js, providing REST and GraphQL APIs.
+
+**Key directories:**
+
+- **`controllers/`** - REST API endpoint handlers (40+ controllers)
+  - Handle HTTP requests and responses
+  - Route-specific logic and validation
+  - Examples: `items.ts`, `users.ts`, `collections.ts`
+
+- **`services/`** - Business logic layer
+  - Core functionality and data processing
+  - Database operations via Knex.js
+  - Examples: `ItemsService`, `UsersService`, `FieldsService`
+
+- **`database/`** - Knex.js database utilities and migrations
+  - Schema management and migrations
+  - Database abstraction layer
+  - Query builders and helpers
+
+- **`middleware/`** - Express middleware
+  - Authentication and authorization
+  - Rate limiting and caching
+  - Request validation and error handling
+
+- **`auth/`** - Authentication providers
+  - LDAP, SAML, OAuth providers
+  - Local authentication
+  - Session management
+
+- **`extensions/`** - Runtime extension loading
+  - Dynamic extension registration
+  - Hooks, endpoints, and custom functionality
+
+- **`websocket/`** - Real-time WebSocket support
+  - Live updates and subscriptions
+  - Event broadcasting
+
+### `/app` - Dashboard Application
+
+The Vue 3 dashboard application built with Vite and Pinia for state management.
+
+**Key directories:**
+
+- **`components/`** - 145+ Vue components
+  - Reusable UI components
+  - Form elements, navigation, modals
+  - Example: `v-button`, `v-input`, `v-table`
+
+- **`views/`** - Page views
+  - Full-page components
+  - Route-specific views
+
+- **`composables/`** - 53+ Vue composables
+  - Reusable composition API logic
+  - State management helpers
+  - Example: `useCollection`, `useItems`, `usePermissions`
+
+- **`stores/`** - 24 Pinia stores
+  - Global state management
+  - User settings, collections, permissions
+  - Example: `useUserStore`, `useCollectionsStore`
+
+- **`interfaces/`** - 45+ field input types
+  - Custom input components for different data types
+  - Examples: date picker, file upload, WYSIWYG editor
+
+- **`displays/`** - 21 field display renderers
+  - Components for displaying field values
+  - Examples: formatted text, images, badges
+
+- **`layouts/`** - 8 data layout views
+  - Different ways to visualize collections
+  - Examples: table, cards, calendar, map
+
+- **`operations/`** - 18 flow operation types
+  - Automation workflow operations
+  - Examples: send email, transform data, API requests
+
+- **`panels/`** - 14 dashboard panel types
+  - Insight dashboard widgets
+  - Examples: metrics, charts, lists
+
+- **`modules/`** - Feature modules
+  - Self-contained feature sets
+  - Examples: content, users, settings
+
+### `/sdk` - TypeScript SDK
+
+The official TypeScript/JavaScript SDK for interacting with the Directus API.
+
+- Type-safe API client
+- Support for REST and GraphQL
+- Authentication helpers
+- Real-time subscriptions
+
+### `/packages/*` - Shared Packages
+
+Over 35 shared packages used across the monorepo:
+
+**Core packages:**
+
+- **`@directus/types`** - Shared TypeScript types and interfaces
+- **`@directus/utils`** - Shared utilities (node/browser/shared)
+- **`@directus/schema`** - Database schema utilities
+- **`@directus/extensions`** - Extension framework and types
+
+**Storage packages:**
+
+- **`@directus/storage`** - Abstract storage interface
+- **`@directus/storage-driver-*`** - Storage backends
+  - `storage-driver-s3` - AWS S3
+  - `storage-driver-azure` - Azure Blob Storage
+  - `storage-driver-gcs` - Google Cloud Storage
+  - `storage-driver-local` - Local filesystem
+  - And more...
+
+**Other packages:**
+
+- Extension types and templates
+- Validation utilities
+- Format converters
+- Database drivers
+
+### `/tests/*` - Test Suites
+
+- **`tests-blackbox/`** - End-to-end blackbox tests
+  - Full integration tests
+  - Multi-database testing
+
+## Architecture Patterns
+
+### Code Style
+
+Directus follows these conventions:
+
+- **TypeScript** for all new code
+- **ES modules** (`import/export` syntax)
+- Prefer `const` over `let`, avoid `var`
+- Follow ESLint and Prettier configurations
+- Test files named `*.test.ts`, placed next to source files
+
+### Testing Conventions
+
+Tests use Vitest:
+
+```typescript
+import { describe, expect, test, vi } from 'vitest';
+
+describe('function name', () => {
+  test('should do something specific', () => {
+    // Test implementation
+  });
+});
+```
+
+### Database Support
+
+Directus works with multiple SQL databases via Knex.js:
+
+- PostgreSQL
+- MySQL
+- MariaDB
+- SQLite
+- MS SQL Server
+- OracleDB
+- CockroachDB
+
+All database-specific code should handle these databases appropriately.
+
+## Dependency Management
+
+Directus uses a catalog-based dependency management system:
+
+### Internal Dependencies
+
+Use `workspace:*` for dependencies on other packages in the monorepo:
+
+```json
+{
+  "dependencies": {
+    "@directus/types": "workspace:*",
+    "@directus/utils": "workspace:*"
+  }
+}
+```
+
+### External Dependencies
+
+Use `catalog:` for external dependencies. Versions are centrally defined in `pnpm-workspace.yaml`:
+
+```json
+{
+  "dependencies": {
+    "express": "catalog:",
+    "knex": "catalog:"
+  }
+}
+```
+
+### Adding New Dependencies
+
+When adding a new shared dependency:
+
+1. Add it to the catalog in `pnpm-workspace.yaml`
+2. Reference it using `catalog:` in package.json files
+3. Run `pnpm install` to update lockfile
+
+## Build System
+
+The monorepo uses different build tools for different packages:
+
+- **API packages** - Typically use `tsdown` or `rollup` for bundling
+- **App** - Uses Vite for development and production builds
+- **Libraries** - Use `rollup` or `tsdown` for creating distributable packages
+
+### Build Commands
+
+```bash
+# Build all packages
+pnpm build
+
+# Build specific package
+pnpm --filter @directus/api build
+
+# Build with dependencies
+pnpm --filter @directus/api... build
+```
+
+## Common Tasks
+
+### Adding a New API Endpoint
+
+1. Create controller in `/api/src/controllers/`
+2. Add service logic in `/api/src/services/`
+3. Register route in appropriate router
+4. Add tests in `*.test.ts` file
+5. Create changeset: `pnpm changeset`
+
+### Adding a New Interface (Field Type)
+
+1. Create interface directory in `/app/src/interfaces/`
+2. Implement `index.ts` with interface definition
+3. Create Vue component for the input
+4. Register in interfaces registry
+5. Add tests and create changeset
+
+### Adding a New Storage Driver
+
+1. Create new package in `/packages/storage-driver-{name}/`
+2. Implement storage driver interface from `@directus/storage`
+3. Add to workspace in `pnpm-workspace.yaml`
+4. Add tests and documentation
+5. Create changeset
+
+## Next Steps
+
+Now that you understand the codebase structure:
+
+- Review the [pull request guidelines](/contributing/pull-requests)
+- Start working on an issue
+- Ask questions in discussions if you need help
+
+## Additional Resources
+
+- [pnpm Workspaces Documentation](https://pnpm.io/workspaces)
+- [Vitest Documentation](https://vitest.dev/)
+- [Vue 3 Documentation](https://vuejs.org/)
+- [Knex.js Documentation](https://knexjs.org/)

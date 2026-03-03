@@ -1,0 +1,189 @@
+---
+title: REST API Overview
+description: Introduction to the Directus REST API
+---
+
+Directus provides a comprehensive REST API that instantly layers on top of any SQL database. The API follows RESTful principles and returns JSON responses.
+
+## Base URL
+
+All API requests should be made to:
+
+```
+http://your-directus-instance.com
+```
+
+## API Versioning
+
+The Directus API does not use versioning in the URL. The platform maintains backward compatibility and uses a rolling release cycle.
+
+## Response Format
+
+All successful responses return a JSON object with a `data` property:
+
+```json
+{
+  "data": {
+    // Response data here
+  }
+}
+```
+
+## HTTP Methods
+
+The API uses standard HTTP methods:
+
+- **GET** - Retrieve resources
+- **POST** - Create new resources
+- **PATCH** - Update existing resources
+- **DELETE** - Delete resources
+
+## Authentication
+
+The API supports multiple authentication methods:
+
+- **Static Tokens** - For server-to-server communication
+- **Temporary Tokens** - JWT tokens from login
+- **SSO** - OAuth, OpenID, SAML, LDAP
+
+See the [Authentication](/api/rest/authentication) page for details.
+
+## Query Parameters
+
+Directus supports powerful query parameters for all collection endpoints:
+
+<AccordionGroup>
+  <Accordion title="Filtering">
+    Filter items using comparison operators:
+    
+    ```bash
+    GET /items/articles?filter[status][_eq]=published
+    GET /items/articles?filter[views][_gte]=1000
+    ```
+    
+    Available operators: `_eq`, `_neq`, `_lt`, `_lte`, `_gt`, `_gte`, `_in`, `_nin`, `_null`, `_nnull`, `_contains`, `_ncontains`, `_starts_with`, `_ends_with`, `_between`, `_nbetween`
+  </Accordion>
+  
+  <Accordion title="Sorting">
+    Sort results by one or more fields:
+    
+    ```bash
+    GET /items/articles?sort=title
+    GET /items/articles?sort=-date_created
+    GET /items/articles?sort=status,-date_created
+    ```
+    
+    Prefix with `-` for descending order.
+  </Accordion>
+  
+  <Accordion title="Limiting & Pagination">
+    Control the number of items returned:
+    
+    ```bash
+    GET /items/articles?limit=10
+    GET /items/articles?limit=10&offset=20
+    GET /items/articles?page=3&limit=10
+    ```
+  </Accordion>
+  
+  <Accordion title="Field Selection">
+    Request specific fields:
+    
+    ```bash
+    GET /items/articles?fields=id,title,author.name
+    GET /items/articles?fields=*,author.*
+    ```
+  </Accordion>
+  
+  <Accordion title="Search">
+    Full-text search across fields:
+    
+    ```bash
+    GET /items/articles?search=directus
+    ```
+  </Accordion>
+  
+  <Accordion title="Aggregation">
+    Get aggregate values:
+    
+    ```bash
+    GET /items/articles?aggregate[count]=id
+    GET /items/articles?aggregate[avg]=rating
+    GET /items/articles?aggregate[sum]=views
+    ```
+    
+    Available functions: `count`, `countDistinct`, `sum`, `sumDistinct`, `avg`, `avgDistinct`, `min`, `max`
+  </Accordion>
+</AccordionGroup>
+
+## Rate Limiting
+
+API requests are rate-limited to prevent abuse. Default limits:
+
+- **100 requests per second** per IP
+- **1000 requests per minute** per IP
+
+Rate limit headers are included in responses:
+
+```
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 95
+X-RateLimit-Reset: 1620000000
+```
+
+## Error Responses
+
+Errors return appropriate HTTP status codes with a JSON error object:
+
+```json
+{
+  "errors": [
+    {
+      "message": "You don't have permission to access this.",
+      "extensions": {
+        "code": "FORBIDDEN"
+      }
+    }
+  ]
+}
+```
+
+Common status codes:
+
+- **400** - Bad Request (invalid syntax)
+- **401** - Unauthorized (authentication required)
+- **403** - Forbidden (insufficient permissions)
+- **404** - Not Found
+- **422** - Unprocessable Entity (validation errors)
+- **500** - Internal Server Error
+
+## CORS
+
+CORS can be configured via environment variables:
+
+```bash
+CORS_ENABLED=true
+CORS_ORIGIN=*
+CORS_METHODS=GET,POST,PATCH,DELETE
+CORS_ALLOWED_HEADERS=Content-Type,Authorization
+CORS_EXPOSED_HEADERS=Content-Range
+CORS_CREDENTIALS=true
+CORS_MAX_AGE=86400
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="key" href="/api/rest/authentication">
+    Learn about authentication methods
+  </Card>
+  <Card title="Items" icon="database" href="/api/rest/items">
+    Work with collection items
+  </Card>
+  <Card title="Files" icon="file" href="/api/rest/files">
+    Manage files and assets
+  </Card>
+  <Card title="Users" icon="users" href="/api/rest/users">
+    Manage users and authentication
+  </Card>
+</CardGroup>

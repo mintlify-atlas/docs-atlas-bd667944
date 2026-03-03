@@ -1,0 +1,394 @@
+---
+title: Fields
+description: Fields define the structure and data types of information stored within collections, mapping to database columns with additional metadata for the app interface.
+---
+
+## What are Fields?
+
+Fields are individual pieces of content within a collection, representing the columns in your database table. Each field has a specific data type and configuration that determines what kind of information it can store and how it's displayed in the Directus app.
+
+<Note>
+Every field in Directus has both a **schema** (the database column definition) and **meta** (the app interface configuration).
+</Note>
+
+## Field Structure
+
+A field consists of three main components:
+
+```typescript
+// From ~/workspace/source/packages/types/src/fields.ts:61-67
+interface FieldRaw {
+  collection: string;      // Parent collection
+  field: string;           // Field name (column name)
+  type: Type;             // Data type
+  schema: Column | null;   // Database column configuration
+  meta: FieldMeta | null;  // App interface configuration
+}
+```
+
+### Field Schema
+
+The schema defines the database column properties:
+
+- `data_type` - SQL data type
+- `max_length` - Maximum length for strings
+- `is_nullable` - Whether NULL values are allowed
+- `is_primary_key` - Primary key designation
+- `has_auto_increment` - Auto-increment for integers
+- `is_unique` - Unique constraint
+- `is_indexed` - Database index
+- `default_value` - Default value for new items
+- `numeric_precision` - Precision for decimal numbers
+- `numeric_scale` - Scale for decimal numbers
+
+### Field Meta
+
+The meta defines how the field appears in the app:
+
+```typescript
+// From ~/workspace/source/packages/types/src/fields.ts:36-59
+type FieldMeta = {
+  id: number;
+  collection: string;
+  field: string;
+  group: string | null;          // Field group for organization
+  hidden: boolean;               // Hide from form interface
+  interface: string | null;      // Input interface component
+  display: string | null;        // Display format component
+  options: Record<string, any> | null;  // Interface options
+  readonly: boolean;             // Prevent editing
+  required: boolean;             // Required validation
+  sort: number | null;           // Display order
+  special: string[] | null;      // Special field types (alias, m2o, etc.)
+  translations: Translations[] | null;  // Multilingual labels
+  width: Width | null;           // Form layout width
+  note: string | null;           // Helper text
+  conditions: Condition[] | null;  // Conditional visibility
+  validation: Filter | null;     // Validation rules
+  validation_message: string | null;  // Custom validation message
+}
+```
+
+## Field Types
+
+Directus supports a comprehensive set of field types that map to database column types:
+
+### Scalar Types
+
+| Type | Database Type | Description |
+|------|---------------|-------------|
+| `string` | VARCHAR | Text with max length |
+| `text` | TEXT | Long text content |
+| `integer` | INTEGER | Whole numbers |
+| `bigInteger` | BIGINT | Large whole numbers |
+| `float` | FLOAT | Decimal numbers |
+| `decimal` | DECIMAL | Precise decimal numbers |
+| `boolean` | BOOLEAN | True/false values |
+| `date` | DATE | Date without time |
+| `time` | TIME | Time without date |
+| `dateTime` | DATETIME | Date and time (no timezone) |
+| `timestamp` | TIMESTAMP | Date and time (with timezone) |
+| `json` | JSON | Structured JSON data |
+| `uuid` | UUID | Universally unique identifier |
+| `hash` | VARCHAR(255) | Hashed strings (passwords) |
+| `csv` | TEXT | Comma-separated values |
+
+### Geometry Types
+
+Support for spatial data:
+
+- `geometry`
+- `geometry.Point`
+- `geometry.LineString`
+- `geometry.Polygon`
+- `geometry.MultiPoint`
+- `geometry.MultiLineString`
+- `geometry.MultiPolygon`
+
+### Alias Types
+
+Alias fields don't exist in the database but provide virtual functionality:
+
+- `alias` - No database column, UI only
+- `o2m` - One-to-Many relationship (virtual)
+- `m2m` - Many-to-Many relationship (virtual)
+- `m2a` - Many-to-Any relationship (virtual)
+- `files` - File relationships
+- `translations` - Translation interface
+
+<Info>
+Alias fields are marked with `alias: true` in the schema and don't create database columns. They're used for relationships and computed values.
+</Info>
+
+## Creating Fields
+
+Fields can be created through the API:
+
+```http
+POST /fields/articles
+Content-Type: application/json
+
+{
+  "field": "title",
+  "type": "string",
+  "meta": {
+    "interface": "input",
+    "required": true,
+    "width": "full",
+    "note": "The article title"
+  },
+  "schema": {
+    "max_length": 255,
+    "is_nullable": false
+  }
+}
+```
+
+From the source code (`~/workspace/source/api/src/services/fields.ts:359-431`), creating a field:
+
+1. Validates the field doesn't already exist
+2. Adds database-specific flags for type handling
+3. Creates or alters the database table
+4. Saves metadata to `directus_fields`
+5. Automatically assigns a sort order
+
+## Field Interfaces
+
+Interfaces determine how fields are displayed and edited in the app:
+
+### Common Interfaces
+
+- **input** - Simple text input
+- **textarea** - Multi-line text
+- **wysiwyg** - Rich text editor
+- **markdown** - Markdown editor
+- **dropdown** - Select from predefined options
+- **checkboxes** - Multiple choice selection
+- **toggle** - Boolean switch
+- **slider** - Numeric slider
+- **datetime** - Date/time picker
+- **file-image** - Image upload
+- **select-dropdown-m2o** - Many-to-One relationship selector
+- **list-o2m** - One-to-Many relationship list
+
+### Interface Options
+
+Each interface has specific options:
+
+```json
+{
+  "field": "status",
+  "type": "string",
+  "meta": {
+    "interface": "select-dropdown",
+    "options": {
+      "choices": [
+        { "text": "Draft", "value": "draft" },
+        { "text": "Published", "value": "published" },
+        { "text": "Archived", "value": "archived" }
+      ]
+    }
+  }
+}
+```
+
+## Field Displays
+
+Displays control how field values appear in item listings:
+
+- **formatted-value** - Formatted number/date
+- **boolean** - Checkmark/X icon
+- **color** - Color swatch
+- **datetime** - Formatted date/time
+- **image** - Thumbnail image
+- **labels** - Colored labels
+- **rating** - Star rating
+- **related-values** - Display related item fields
+
+## Field Validation
+
+Validation rules ensure data integrity using filter syntax:
+
+```json
+{
+  "field": "email",
+  "type": "string",
+  "meta": {
+    "validation": {
+      "_and": [
+        {
+          "email": {
+            "_regex": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+          }
+        }
+      ]
+    },
+    "validation_message": "Please enter a valid email address"
+  }
+}
+```
+
+## System Fields
+
+Directus automatically includes system fields in collections:
+
+- `id` - Primary key (auto-generated)
+- `user_created` - User who created the item
+- `user_updated` - User who last updated the item
+- `date_created` - Creation timestamp
+- `date_updated` - Last update timestamp
+
+<Warning>
+System fields cannot be deleted and have restricted modification. Only the `is_indexed` schema property can be changed.
+</Warning>
+
+From the source code (`~/workspace/source/api/src/controllers/fields.ts:138-144`):
+
+```typescript
+if (isSystemField(req.params['collection']!, fieldData['field']!)) {
+  const { error } = systemFieldUpdateSchema.safeParse(fieldData);
+  
+  if (error) {
+    throw new InvalidPayloadError({ 
+      reason: 'Only "schema.is_indexed" may be modified for system fields' 
+    });
+  }
+}
+```
+
+## Conditional Fields
+
+Fields can be shown/hidden based on conditions:
+
+```json
+{
+  "field": "shipping_address",
+  "meta": {
+    "conditions": [
+      {
+        "name": "Show when shipping required",
+        "rule": {
+          "requires_shipping": {
+            "_eq": true
+          }
+        },
+        "hidden": false
+      }
+    ]
+  }
+}
+```
+
+## Field Groups
+
+Organize related fields into collapsible groups:
+
+```json
+{
+  "field": "metadata_group",
+  "type": "alias",
+  "meta": {
+    "interface": "group-detail",
+    "special": ["group"]
+  }
+}
+```
+
+Then assign fields to the group:
+
+```json
+{
+  "field": "seo_title",
+  "type": "string",
+  "meta": {
+    "group": "metadata_group"
+  }
+}
+```
+
+## Updating Fields
+
+Update field schema or metadata:
+
+```http
+PATCH /fields/articles/title
+Content-Type: application/json
+
+{
+  "meta": {
+    "required": false,
+    "note": "Optional article title"
+  },
+  "schema": {
+    "is_nullable": true
+  }
+}
+```
+
+<Warning>
+Changing field types may result in data loss. Always backup your data before modifying field schemas.
+</Warning>
+
+## Deleting Fields
+
+Deleting a field removes both the database column and metadata:
+
+```http
+DELETE /fields/articles/subtitle
+```
+
+From the source code (`~/workspace/source/api/src/services/fields.ts:697-903`), deleting a field:
+
+1. Removes related foreign key constraints and relationships
+2. Drops the database column
+3. Deletes metadata from `directus_fields`
+4. Updates permissions to remove field references
+5. Cleans up collection metadata references
+
+## Common Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Rich Content" icon="file-lines">
+    Use WYSIWYG or Markdown fields for article bodies, product descriptions, and formatted text content.
+  </Card>
+  
+  <Card title="Media Management" icon="image">
+    File and image fields with transformation options for galleries, featured images, and document attachments.
+  </Card>
+  
+  <Card title="Relational Data" icon="link">
+    M2O, O2M, and M2M fields to create relationships between collections like authors, categories, and tags.
+  </Card>
+  
+  <Card title="JSON Data" icon="code">
+    JSON fields for flexible, schema-less data like product options, metadata, or API responses.
+  </Card>
+</CardGroup>
+
+## Best Practices
+
+<Tip>
+**Choose Appropriate Types**: Use the most specific type for your data (e.g., `integer` over `string` for numbers).
+</Tip>
+
+<Tip>
+**Add Validation**: Define validation rules to ensure data quality and prevent invalid entries.
+</Tip>
+
+<Tip>
+**Use Helpful Notes**: Add descriptive notes to guide content editors on field usage.
+</Tip>
+
+<Tip>
+**Set Sensible Defaults**: Provide default values for fields when appropriate to streamline content creation.
+</Tip>
+
+<Tip>
+**Index Wisely**: Add indexes to fields used in filters and sorts, but avoid over-indexing as it impacts write performance.
+</Tip>
+
+## Related Concepts
+
+- **[Collections](/core-concepts/collections)** - Containers that organize fields
+- **[Items](/core-concepts/items)** - Records that contain field values
+- **[Relationships](/core-concepts/relationships)** - Connect fields across collections

@@ -1,0 +1,374 @@
+---
+title: AI Integration
+description: Integrate AI capabilities into Directus with multi-provider support for OpenAI, Anthropic, Google, and custom models.
+---
+
+Directus includes built-in AI integration capabilities, allowing you to leverage large language models from multiple providers for content generation, data processing, and intelligent automation.
+
+## Supported AI Providers
+
+Directus supports the following AI providers out of the box:
+
+- **OpenAI** - GPT-4, GPT-5 series models
+- **Anthropic** - Claude models (Haiku, Sonnet, Opus)
+- **Google** - Gemini models
+- **OpenAI-Compatible** - Custom endpoints compatible with OpenAI API
+
+## Configuration
+
+### OpenAI
+
+```bash
+# Enable OpenAI
+AI_OPENAI_ENABLED=true
+AI_OPENAI_API_KEY="sk-..."
+
+# Optional: Custom endpoint
+AI_OPENAI_BASE_URL="https://api.openai.com/v1"
+
+# Allowed models (comma-separated)
+AI_OPENAI_ALLOWED_MODELS="gpt-4o-mini,gpt-4.1,gpt-5"
+```
+
+### Anthropic
+
+```bash
+AI_ANTHROPIC_ENABLED=true
+AI_ANTHROPIC_API_KEY="sk-ant-..."
+AI_ANTHROPIC_ALLOWED_MODELS="claude-haiku-4-5,claude-sonnet-4-5,claude-opus-4-5"
+```
+
+### Google
+
+```bash
+AI_GOOGLE_ENABLED=true
+AI_GOOGLE_API_KEY="..."
+AI_GOOGLE_ALLOWED_MODELS="gemini-2.5-flash,gemini-2.5-pro,gemini-3-pro-preview"
+```
+
+### OpenAI-Compatible Provider
+
+```bash
+AI_OPENAI_COMPATIBLE_ENABLED=true
+AI_OPENAI_COMPATIBLE_BASE_URL="https://your-api.example.com/v1"
+AI_OPENAI_COMPATIBLE_API_KEY="..."
+
+# Define custom models
+AI_OPENAI_COMPATIBLE_MODELS='json:[
+  {
+    "id": "custom-model-1",
+    "name": "Custom Model",
+    "context": 128000,
+    "output": 4096,
+    "attachment": true,
+    "reasoning": false
+  }
+]'
+```
+
+## Available Models
+
+Directus includes definitions for popular AI models with their capabilities and pricing:
+
+### OpenAI Models
+
+- **gpt-4o-mini** - Fast, cost-effective (128k context)
+- **gpt-4.1-nano** - Entry-level GPT-4.1 (1M context)
+- **gpt-4.1-mini** - Balanced GPT-4.1 (1M context)
+- **gpt-4.1** - Full GPT-4.1 (1M context)
+- **gpt-5-nano** - Entry-level GPT-5 with reasoning (400k context)
+- **gpt-5-mini** - Balanced GPT-5 with reasoning (400k context)
+- **gpt-5** - Standard GPT-5 with reasoning (400k context)
+- **gpt-5.2** - Latest GPT-5 with reasoning (400k context)
+- **gpt-5.2-pro** - Premium GPT-5 with reasoning (400k context)
+
+### Anthropic Models
+
+- **claude-haiku-4-5** - Fast, cost-effective (200k context)
+- **claude-sonnet-4-5** - Balanced with reasoning (200k context)
+- **claude-opus-4-5** - Most capable with reasoning (200k context)
+
+### Google Models
+
+- **gemini-2.5-flash** - Fast, cost-effective (1M context)
+- **gemini-2.5-pro** - Balanced (1M context)
+- **gemini-3-flash-preview** - Next-gen flash (1M context)
+- **gemini-3-pro-preview** - Next-gen pro (1M context)
+
+## Model Capabilities
+
+Each model definition includes:
+
+```typescript
+interface ModelDefinition {
+  provider: 'openai' | 'anthropic' | 'google' | 'openai-compatible';
+  model: string; // Model identifier
+  name: string; // Display name
+  limit: {
+    context: number; // Max context tokens
+    output: number; // Max output tokens
+  };
+  cost: {
+    input: number; // Cost per 1M input tokens (USD)
+    output: number; // Cost per 1M output tokens (USD)
+  };
+  attachment: boolean; // Supports file/image attachments
+  reasoning: boolean; // Supports chain-of-thought reasoning
+}
+```
+
+Example:
+```typescript
+{
+  provider: 'openai',
+  model: 'gpt-5',
+  name: 'GPT-5',
+  limit: {
+    context: 400_000,
+    output: 128_000
+  },
+  cost: {
+    input: 1.25, // $1.25 per 1M tokens
+    output: 10.0 // $10.00 per 1M tokens
+  },
+  attachment: true,
+  reasoning: true
+}
+```
+
+## Using AI in Flows
+
+AI can be integrated into flows for automated content processing:
+
+### AI Operation Example
+
+```javascript
+{
+  trigger: 'event',
+  options: {
+    type: 'action',
+    scope: ['items.create'],
+    collections: ['articles']
+  },
+  operations: [
+    {
+      operation: 'ai-generate',
+      options: {
+        provider: 'openai',
+        model: 'gpt-4.1',
+        prompt: 'Generate SEO meta description for: {{$trigger.title}}\n\nContent: {{$trigger.content}}',
+        maxTokens: 160,
+        temperature: 0.7
+      },
+      resolve: 'update-meta'
+    },
+    {
+      id: 'update-meta',
+      operation: 'item-update',
+      options: {
+        collection: 'articles',
+        key: '{{$trigger.id}}',
+        payload: {
+          meta_description: '{{$last.content}}'
+        }
+      }
+    }
+  ]
+}
+```
+
+## AI Tools
+
+Directus AI supports tool calling for structured outputs:
+
+### Available System Tools
+
+- **items** - Read/write collection items
+- **files** - Access file metadata
+- **folders** - Manage file folders
+- **assets** - Work with uploaded assets
+- **flows** - Interact with flows
+- **trigger-flow** - Execute flows
+- **operations** - Flow operations
+- **schema** - Database schema info
+- **collections** - Collection metadata
+- **fields** - Field definitions
+- **relations** - Relationship metadata
+
+### Tool Approval Modes
+
+```typescript
+type ToolApprovalMode = 'always' | 'ask' | 'disabled';
+```
+
+- **always** - AI can use tools without confirmation
+- **ask** - Require user approval before tool execution
+- **disabled** - Tools not available to AI
+
+## File Attachments
+
+Models with `attachment: true` support image and file inputs:
+
+```javascript
+{
+  operation: 'ai-analyze-image',
+  options: {
+    provider: 'anthropic',
+    model: 'claude-sonnet-4-5',
+    prompt: 'Describe this image in detail',
+    attachments: [
+      {
+        type: 'file',
+        fileId: '{{$trigger.image}}'
+      }
+    ]
+  }
+}
+```
+
+## Reasoning Models
+
+Models with `reasoning: true` support chain-of-thought:
+
+```javascript
+{
+  operation: 'ai-analyze',
+  options: {
+    provider: 'openai',
+    model: 'gpt-5', // Reasoning enabled
+    prompt: 'Analyze the sentiment and key themes in these customer reviews',
+    enableReasoning: true,
+    data: '{{$trigger.reviews}}'
+  }
+}
+```
+
+Reasoning models:
+- Think step-by-step before responding
+- Provide explanation of their reasoning
+- Better at complex analysis and problem-solving
+- Higher cost and latency
+
+## Context Management
+
+### Context Limits
+
+Each model has a maximum context window:
+
+```typescript
+// Check model limits
+const model = getModelDefinition('gpt-5');
+console.log(`Context: ${model.limit.context} tokens`);
+console.log(`Output: ${model.limit.output} tokens`);
+```
+
+### Prompt Optimization
+
+```javascript
+// Keep prompts focused
+const prompt = `
+Task: Generate a summary
+
+Content:
+{{$trigger.content | truncate(10000)}}
+
+Requirements:
+- Max 3 sentences
+- Highlight key points
+- Professional tone
+`;
+```
+
+## Cost Tracking
+
+Track AI usage and costs:
+
+```typescript
+// Model costs per 1M tokens
+const inputCost = model.cost.input;
+const outputCost = model.cost.output;
+
+// Calculate cost for request
+const estimatedCost = 
+  (inputTokens / 1_000_000 * inputCost) +
+  (outputTokens / 1_000_000 * outputCost);
+```
+
+## Custom Models
+
+Define custom models for OpenAI-compatible APIs:
+
+```typescript
+import { buildCustomModels } from '@directus/ai';
+
+const customModels = buildCustomModels([
+  {
+    id: 'my-custom-model',
+    name: 'My Custom Model',
+    context: 32000,
+    output: 4096,
+    attachment: false,
+    reasoning: false
+  }
+]);
+```
+
+## Streaming Responses
+
+Stream AI responses for better UX:
+
+```typescript
+const stream = await ai.generateStream({
+  model: 'gpt-4.1',
+  prompt: 'Write a detailed article about...',
+  stream: true
+});
+
+for await (const chunk of stream) {
+  process.stdout.write(chunk.content);
+}
+```
+
+## Error Handling
+
+```typescript
+try {
+  const result = await ai.generate({
+    provider: 'openai',
+    model: 'gpt-5',
+    prompt: userPrompt
+  });
+} catch (error) {
+  if (error.code === 'RATE_LIMIT_EXCEEDED') {
+    // Handle rate limiting
+  } else if (error.code === 'CONTEXT_LENGTH_EXCEEDED') {
+    // Prompt too long
+  } else if (error.code === 'INVALID_API_KEY') {
+    // Authentication failed
+  }
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Choose the Right Model">
+    Use faster, cheaper models (mini/nano) for simple tasks. Reserve premium models (opus/pro) for complex reasoning.
+  </Accordion>
+  
+  <Accordion title="Optimize Context Usage">
+    Keep prompts concise and only include necessary context to reduce costs and latency.
+  </Accordion>
+  
+  <Accordion title="Implement Rate Limiting">
+    Set up rate limits to prevent runaway API costs from automated flows.
+  </Accordion>
+  
+  <Accordion title="Cache Common Responses">
+    Cache frequently requested AI generations to reduce API calls.
+  </Accordion>
+  
+  <Accordion title="Monitor Costs">
+    Track token usage and costs, especially in production environments.
+  </Accordion>
+</AccordionGroup>

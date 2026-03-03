@@ -1,0 +1,162 @@
+---
+title: Local Storage
+description: Configure local file system storage in Directus for storing files on the server's disk.
+---
+
+The Local storage driver stores files on the server's file system. This is the simplest storage option and is suitable for development, testing, or single-server deployments.
+
+## Installation
+
+The Local driver is included by default with Directus via the `@directus/storage-driver-local` package.
+
+## Configuration
+
+Configure Local storage using environment variables:
+
+```bash
+# Define storage location
+STORAGE_LOCATIONS="local"
+
+# Configure local driver
+STORAGE_LOCAL_DRIVER="local"
+STORAGE_LOCAL_ROOT="./uploads"
+```
+
+### Configuration Options
+
+<ParamField path="root" type="string" required>
+  The root directory where files will be stored. Can be absolute or relative to the Directus installation directory.
+</ParamField>
+
+## Examples
+
+### Basic Configuration
+
+```bash
+STORAGE_LOCATIONS="local"
+STORAGE_LOCAL_DRIVER="local"
+STORAGE_LOCAL_ROOT="./uploads"
+```
+
+### Absolute Path
+
+```bash
+STORAGE_LOCATIONS="local"
+STORAGE_LOCAL_DRIVER="local"
+STORAGE_LOCAL_ROOT="/var/www/directus/uploads"
+```
+
+### Multiple Local Locations
+
+You can configure multiple local storage locations for different purposes:
+
+```bash
+STORAGE_LOCATIONS="local,archive"
+
+# Primary local storage
+STORAGE_LOCAL_DRIVER="local"
+STORAGE_LOCAL_ROOT="./uploads"
+
+# Archive storage
+STORAGE_ARCHIVE_DRIVER="local"
+STORAGE_ARCHIVE_ROOT="./archive"
+```
+
+## Features
+
+### Resumable Uploads
+
+The Local driver supports TUS resumable uploads with the following extensions:
+- `creation` - Create new uploads
+- `termination` - Cancel/delete uploads
+- `expiration` - Automatic cleanup of incomplete uploads
+
+### Range Requests
+
+The Local driver supports HTTP range requests for efficient partial file reading:
+
+```typescript
+// Read specific byte range
+await storage.location('local').read('file.mp4', {
+  range: { start: 0, end: 1024 }
+});
+```
+
+## Implementation Details
+
+The Local driver (`DriverLocal` class) from `/packages/storage-driver-local/src/index.ts:14-174`:
+
+- Uses Node.js file system APIs (`fs/promises`)
+- Automatically creates directories as needed
+- Supports both relative and absolute paths
+- All paths are resolved relative to the configured `root`
+- Uses streams for efficient memory usage with large files
+
+## Best Practices
+
+### Directory Permissions
+
+Ensure the Directus process has read/write permissions for the configured root directory:
+
+```bash
+# Create upload directory
+mkdir -p ./uploads
+
+# Set appropriate permissions
+chmod 755 ./uploads
+chown directus:directus ./uploads
+```
+
+### Backups
+
+Regularly backup your upload directory:
+
+```bash
+# Example backup script
+tar -czf uploads-backup-$(date +%Y%m%d).tar.gz ./uploads
+```
+
+### Production Considerations
+
+For production deployments:
+
+- Use absolute paths for clarity
+- Store files outside the Directus installation directory
+- Consider using cloud storage for scalability
+- Implement proper backup strategies
+- Monitor disk space usage
+
+### Multi-Server Deployments
+
+Local storage is not recommended for multi-server deployments because:
+- Files are only available on one server
+- No automatic synchronization between servers
+- Load balancers may route requests to servers without the file
+
+For multi-server setups, use cloud storage drivers like [S3](/storage/s3), [Azure](/storage/azure), or [GCS](/storage/gcs).
+
+## Troubleshooting
+
+### Permission Errors
+
+If you encounter permission errors:
+
+1. Check directory ownership: `ls -la ./uploads`
+2. Verify the Directus process user has write access
+3. Check SELinux or AppArmor policies if applicable
+
+### Disk Space Issues
+
+Monitor disk space to prevent upload failures:
+
+```bash
+df -h
+```
+
+Consider implementing file size limits and cleanup policies.
+
+## Related
+
+- [Storage Overview](/storage/overview)
+- [S3 Storage](/storage/s3)
+- [Azure Storage](/storage/azure)

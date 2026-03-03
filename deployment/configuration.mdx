@@ -1,0 +1,820 @@
+---
+title: Configuration Options
+description: Complete reference for Directus environment variables and configuration options for security, performance, and integrations.
+---
+
+Directus is configured through environment variables that control everything from database connections to security settings. This reference covers all available configuration options.
+
+## Configuration Methods
+
+Directus supports multiple configuration methods:
+
+<CodeGroup>
+```bash .env File
+# .env file in project root
+DB_CLIENT=postgres
+DB_HOST=localhost
+SECRET=your-secret-key
+```
+
+```yaml config.yaml
+# config.yaml
+DB_CLIENT: postgres
+DB_HOST: localhost
+SECRET: your-secret-key
+```
+
+```javascript config.js
+// config.js
+module.exports = {
+  DB_CLIENT: 'postgres',
+  DB_HOST: 'localhost',
+  SECRET: 'your-secret-key',
+};
+```
+
+```json config.json
+{
+  "DB_CLIENT": "postgres",
+  "DB_HOST": "localhost",
+  "SECRET": "your-secret-key"
+}
+```
+</CodeGroup>
+
+By default, Directus looks for `.env` in the project root. Use `CONFIG_PATH` to specify a different location:
+
+```bash
+CONFIG_PATH=/path/to/config.yaml
+```
+
+## General Configuration
+
+### Server Settings
+
+```bash
+# Server host (default: 0.0.0.0)
+HOST=0.0.0.0
+
+# Server port (default: 8055)
+PORT=8055
+
+# Public URL for links in emails, etc.
+PUBLIC_URL=https://your-domain.com
+
+# Redirect root to admin app (default: ./admin)
+ROOT_REDIRECT=./admin
+
+# Serve admin app (default: true)
+SERVE_APP=true
+
+# Maximum request payload size (default: 1mb)
+MAX_PAYLOAD_SIZE=100mb
+```
+
+### Logging
+
+```bash
+# Log level: error, warn, info, debug (default: info)
+LOG_LEVEL=info
+
+# Log output style: pretty, raw, json (default: pretty)
+LOG_STYLE=json
+
+# Paths to ignore in HTTP logging
+LOG_HTTP_IGNORE_PATHS=/server/health,/server/ping
+```
+
+### Temporary Files
+
+```bash
+# Temporary file storage (default: ./node_modules/.directus)
+TEMP_PATH=/tmp/directus
+```
+
+## Database Configuration
+
+### Connection Settings
+
+```bash
+# Database client: postgres, mysql, sqlite3, mssql, cockroachdb, oracledb
+DB_CLIENT=postgres
+
+# Database host
+DB_HOST=localhost
+
+# Database port
+DB_PORT=5432
+
+# Database name
+DB_DATABASE=directus
+
+# Database user
+DB_USER=postgres
+
+# Database password
+DB_PASSWORD=your-password
+
+# Enable SSL for database connection
+DB_SSL=false
+
+# Path to SSL certificate (if DB_SSL is true)
+DB_SSL__CA=/path/to/ca.pem
+DB_SSL__CERT=/path/to/cert.pem
+DB_SSL__KEY=/path/to/key.pem
+```
+
+### Connection Pool
+
+```bash
+# Minimum pool size (default: 2)
+DB_POOL__MIN=2
+
+# Maximum pool size (default: 10)
+DB_POOL__MAX=10
+
+# Connection timeout in milliseconds (default: 60000)
+DB_CONNECTION_TIMEOUT=60000
+
+# Idle timeout in milliseconds (default: 30000)
+DB_POOL__IDLE_TIMEOUT=30000
+```
+
+### Advanced Database Settings
+
+```bash
+# Tables to exclude from Directus
+DB_EXCLUDE_TABLES=spatial_ref_sys,sysdiagrams
+
+# Database search path (PostgreSQL only)
+DB_SEARCH_PATH=public,directus
+
+# Database version (auto-detected if not specified)
+DB_VERSION=13.7
+```
+
+## Security Configuration
+
+### Secrets and Keys
+
+```bash
+# Secret key for encryption (REQUIRED - minimum 32 characters)
+SECRET=replace-with-cryptographically-secure-random-string-min-32-chars
+```
+
+### Access Tokens
+
+```bash
+# Access token TTL (default: 15m)
+ACCESS_TOKEN_TTL=15m
+
+# Refresh token TTL (default: 7d)
+REFRESH_TOKEN_TTL=7d
+
+# Refresh token cookie name (default: directus_refresh_token)
+REFRESH_TOKEN_COOKIE_NAME=directus_refresh_token
+
+# Refresh token cookie domain
+REFRESH_TOKEN_COOKIE_DOMAIN=.your-domain.com
+
+# Refresh token cookie secure flag (default: false)
+REFRESH_TOKEN_COOKIE_SECURE=true
+
+# Refresh token cookie same-site: lax, strict, none (default: lax)
+REFRESH_TOKEN_COOKIE_SAME_SITE=lax
+```
+
+### Session Tokens
+
+```bash
+# Session cookie TTL (default: 1d)
+SESSION_COOKIE_TTL=1d
+
+# Session cookie name (default: directus_session_token)
+SESSION_COOKIE_NAME=directus_session_token
+
+# Session cookie domain
+SESSION_COOKIE_DOMAIN=.your-domain.com
+
+# Session cookie secure flag (default: false)
+SESSION_COOKIE_SECURE=true
+
+# Session cookie same-site (default: lax)
+SESSION_COOKIE_SAME_SITE=lax
+
+# Session refresh grace period (default: 10s)
+SESSION_REFRESH_GRACE_PERIOD=10s
+```
+
+### Password & User Management
+
+```bash
+# Email verification token TTL (default: 7d)
+EMAIL_VERIFICATION_TOKEN_TTL=7d
+
+# User invite token TTL (default: 7d)
+USER_INVITE_TOKEN_TTL=7d
+
+# Allowed URLs for user invite redirects
+USER_INVITE_URL_ALLOW_LIST=https://app.example.com,https://admin.example.com
+
+# Allowed URLs for user registration redirects
+USER_REGISTER_URL_ALLOW_LIST=https://app.example.com
+
+# Allowed URLs for password reset redirects
+PASSWORD_RESET_URL_ALLOW_LIST=https://app.example.com
+
+# Artificial delay for login attempts (ms, default: 500)
+LOGIN_STALL_TIME=500
+
+# Artificial delay for registration (ms, default: 750)
+REGISTER_STALL_TIME=750
+```
+
+### IP & Security Headers
+
+```bash
+# Trust proxy headers (default: true)
+IP_TRUST_PROXY=true
+
+# Custom header for client IP
+IP_CUSTOM_HEADER=X-Real-IP
+
+# IP addresses to deny for file imports
+IMPORT_IP_DENY_LIST=0.0.0.0,169.254.169.254
+
+# Content Security Policy for assets
+ASSETS_CONTENT_SECURITY_POLICY=default-src 'self'
+
+# HSTS configuration
+HSTS_ENABLED=true
+HSTS_MAX_AGE=31536000
+HSTS_INCLUDE_SUBDOMAINS=true
+HSTS_PRELOAD=true
+```
+
+### Hashing
+
+```bash
+# Hashing algorithm (default: argon2)
+HASH_ALGORITHM=argon2
+
+# Memory cost for argon2 (default: 4096)
+HASH_MEMORY_COST=4096
+
+# Time cost for argon2 (default: 3)
+HASH_TIME_COST=3
+
+# Parallelism for argon2 (default: 1)
+HASH_PARALLELISM=1
+```
+
+## CORS Configuration
+
+```bash
+# Enable CORS (default: false)
+CORS_ENABLED=true
+
+# Allowed origins (* for all, or comma-separated list)
+CORS_ORIGIN=https://app.example.com,https://admin.example.com
+
+# Allowed HTTP methods (default: GET,POST,PATCH,DELETE)
+CORS_METHODS=GET,POST,PATCH,DELETE,PUT
+
+# Allowed headers (default: Content-Type,Authorization)
+CORS_ALLOWED_HEADERS=Content-Type,Authorization
+
+# Exposed headers (default: Content-Range)
+CORS_EXPOSED_HEADERS=Content-Range,X-Total-Count
+
+# Allow credentials (default: true)
+CORS_CREDENTIALS=true
+
+# Max age in seconds (default: 18000)
+CORS_MAX_AGE=18000
+```
+
+## Cache Configuration
+
+```bash
+# Enable caching (default: false)
+CACHE_ENABLED=true
+
+# Cache store: memory, redis (default: memory)
+CACHE_STORE=redis
+
+# Cache TTL (default: 5m)
+CACHE_TTL=30m
+
+# Cache namespace (default: system-cache)
+CACHE_NAMESPACE=directus-cache
+
+# Auto-purge cache on changes (default: false)
+CACHE_AUTO_PURGE=true
+
+# Collections to ignore in auto-purge
+CACHE_AUTO_PURGE_IGNORE_LIST=directus_activity,directus_presets
+
+# Cache-Control s-maxage header (default: 0)
+CACHE_CONTROL_S_MAXAGE=86400
+
+# Enable schema caching (default: true)
+CACHE_SCHEMA=true
+
+# Schema cache synchronization timeout (default: 10000)
+CACHE_SCHEMA_SYNC_TIMEOUT=10000
+
+# Maximum cache value size in bytes (default: false for unlimited)
+CACHE_VALUE_MAX_SIZE=10000000
+
+# Allow cache skip via header (default: false)
+CACHE_SKIP_ALLOWED=false
+
+# Cache status header name
+CACHE_STATUS_HEADER=X-Cache-Status
+```
+
+## Redis Configuration
+
+```bash
+# Redis connection string
+REDIS=redis://localhost:6379
+
+# Or configure separately:
+REDIS_ENABLED=true
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_USERNAME=default
+REDIS_PASSWORD=your-password
+REDIS_DB=0
+```
+
+## Rate Limiting
+
+### Global Rate Limiting
+
+```bash
+# Enable rate limiting (default: false)
+RATE_LIMITER_ENABLED=true
+
+# Rate limiter store: memory, redis (default: memory)
+RATE_LIMITER_STORE=redis
+
+# Points allowed per duration (default: 50)
+RATE_LIMITER_POINTS=50
+
+# Duration in seconds (default: 1)
+RATE_LIMITER_DURATION=1
+
+# Global rate limiting
+RATE_LIMITER_GLOBAL_ENABLED=true
+RATE_LIMITER_GLOBAL_POINTS=1000
+RATE_LIMITER_GLOBAL_DURATION=1
+```
+
+### Registration Rate Limiting
+
+```bash
+RATE_LIMITER_REGISTRATION_ENABLED=true
+RATE_LIMITER_REGISTRATION_POINTS=5
+RATE_LIMITER_REGISTRATION_DURATION=60
+```
+
+### Email Rate Limiting
+
+```bash
+RATE_LIMITER_EMAIL_ENABLED=true
+RATE_LIMITER_EMAIL_POINTS=60
+RATE_LIMITER_EMAIL_DURATION=60
+RATE_LIMITER_EMAIL_QUEUE_SIZE=1000000
+```
+
+## Storage Configuration
+
+### Local Storage
+
+```bash
+STORAGE_LOCATIONS=local
+STORAGE_LOCAL_DRIVER=local
+STORAGE_LOCAL_ROOT=./uploads
+```
+
+### AWS S3
+
+```bash
+STORAGE_LOCATIONS=s3
+STORAGE_S3_DRIVER=s3
+STORAGE_S3_KEY=your-access-key-id
+STORAGE_S3_SECRET=your-secret-access-key
+STORAGE_S3_BUCKET=your-bucket-name
+STORAGE_S3_REGION=us-east-1
+
+# Optional S3 settings
+STORAGE_S3_ENDPOINT=https://s3.us-east-1.amazonaws.com
+STORAGE_S3_ACL=private
+STORAGE_S3_SERVER_SIDE_ENCRYPTION=AES256
+STORAGE_S3_SERVER_SIDE_ENCRYPTION_KMS_KEY_ID=your-kms-key-id
+```
+
+### Google Cloud Storage
+
+```bash
+STORAGE_LOCATIONS=gcs
+STORAGE_GCS_DRIVER=gcs
+STORAGE_GCS_KEY_FILENAME=/path/to/service-account.json
+STORAGE_GCS_BUCKET=your-bucket-name
+```
+
+### Azure Blob Storage
+
+```bash
+STORAGE_LOCATIONS=azure
+STORAGE_AZURE_DRIVER=azure
+STORAGE_AZURE_CONTAINER_NAME=your-container
+STORAGE_AZURE_ACCOUNT_NAME=your-account-name
+STORAGE_AZURE_ACCOUNT_KEY=your-account-key
+```
+
+### Multiple Storage Locations
+
+```bash
+STORAGE_LOCATIONS=local,s3,azure
+```
+
+### File Upload Limits
+
+```bash
+# Maximum file upload size (default: unlimited)
+FILES_MAX_UPLOAD_SIZE=100mb
+
+# Maximum concurrent uploads (default: unlimited)
+FILES_MAX_UPLOAD_CONCURRENCY=5
+
+# Allowed MIME types (default: */*)
+FILES_MIME_TYPE_ALLOW_LIST=image/*,application/pdf
+
+# Metadata fields to preserve
+FILE_METADATA_ALLOW_LIST=ifd0.Make,ifd0.Model,exif.FNumber,exif.ExposureTime
+```
+
+## Assets Configuration
+
+```bash
+# Asset cache TTL (default: 30d)
+ASSETS_CACHE_TTL=30d
+
+# Maximum concurrent transformations (default: 25)
+ASSETS_TRANSFORM_MAX_CONCURRENT=25
+
+# Maximum image dimension (default: 6000)
+ASSETS_TRANSFORM_IMAGE_MAX_DIMENSION=6000
+
+# Maximum transformation operations per request (default: 5)
+ASSETS_TRANSFORM_MAX_OPERATIONS=5
+
+# Transformation timeout (default: 7500ms)
+ASSETS_TRANSFORM_TIMEOUT=10000
+
+# Invalid image sensitivity: warning, error (default: warning)
+ASSETS_INVALID_IMAGE_SENSITIVITY_LEVEL=error
+```
+
+## Email Configuration
+
+### SMTP
+
+```bash
+EMAIL_FROM=noreply@example.com
+EMAIL_TRANSPORT=smtp
+EMAIL_SMTP_HOST=smtp.example.com
+EMAIL_SMTP_PORT=587
+EMAIL_SMTP_USER=your-username
+EMAIL_SMTP_PASSWORD=your-password
+EMAIL_SMTP_SECURE=false
+EMAIL_SMTP_POOL=true
+EMAIL_SMTP_NAME=your-hostname
+EMAIL_SMTP_IGNORE_TLS=false
+
+# Verify email configuration on startup (default: true)
+EMAIL_VERIFY_SETUP=true
+```
+
+### Sendmail
+
+```bash
+EMAIL_FROM=noreply@example.com
+EMAIL_TRANSPORT=sendmail
+EMAIL_SENDMAIL_PATH=/usr/sbin/sendmail
+EMAIL_SENDMAIL_NEW_LINE=unix
+```
+
+### AWS SES
+
+```bash
+EMAIL_FROM=noreply@example.com
+EMAIL_TRANSPORT=ses
+EMAIL_SES_CREDENTIALS__ACCESS_KEY_ID=your-access-key
+EMAIL_SES_CREDENTIALS__SECRET_ACCESS_KEY=your-secret-key
+EMAIL_SES_REGION=us-east-1
+```
+
+### Mailgun
+
+```bash
+EMAIL_FROM=noreply@example.com
+EMAIL_TRANSPORT=mailgun
+EMAIL_MAILGUN_API_KEY=your-api-key
+EMAIL_MAILGUN_DOMAIN=mg.example.com
+EMAIL_MAILGUN_HOST=api.mailgun.net
+```
+
+### Email Templates
+
+```bash
+# Path to custom email templates (default: ./templates)
+EMAIL_TEMPLATES_PATH=/path/to/templates
+```
+
+## Authentication Configuration
+
+### Providers
+
+```bash
+# Comma-separated list of auth providers
+AUTH_PROVIDERS=google,github,microsoft
+
+# Disable default email/password authentication (default: false)
+AUTH_DISABLE_DEFAULT=false
+
+# Publicly accessible auth URLs
+AUTH_ALLOWED_PUBLIC_URLS=https://app.example.com/auth/callback
+```
+
+### OAuth Configuration
+
+```bash
+# Google OAuth
+AUTH_GOOGLE_DRIVER=openid
+AUTH_GOOGLE_CLIENT_ID=your-client-id
+AUTH_GOOGLE_CLIENT_SECRET=your-client-secret
+AUTH_GOOGLE_ISSUER_URL=https://accounts.google.com
+AUTH_GOOGLE_IDENTIFIER_KEY=email
+AUTH_GOOGLE_ICON=google
+AUTH_GOOGLE_LABEL=Google
+AUTH_GOOGLE_ALLOW_PUBLIC_REGISTRATION=true
+AUTH_GOOGLE_DEFAULT_ROLE_ID=role-uuid
+
+# GitHub OAuth
+AUTH_GITHUB_DRIVER=oauth2
+AUTH_GITHUB_CLIENT_ID=your-client-id
+AUTH_GITHUB_CLIENT_SECRET=your-client-secret
+AUTH_GITHUB_AUTHORIZE_URL=https://github.com/login/oauth/authorize
+AUTH_GITHUB_ACCESS_URL=https://github.com/login/oauth/access_token
+AUTH_GITHUB_PROFILE_URL=https://api.github.com/user
+AUTH_GITHUB_IDENTIFIER_KEY=id
+AUTH_GITHUB_EMAIL_KEY=email
+AUTH_GITHUB_ICON=github
+AUTH_GITHUB_LABEL=GitHub
+```
+
+### LDAP Configuration
+
+```bash
+AUTH_LDAP_DRIVER=ldap
+AUTH_LDAP_CLIENT_URL=ldap://ldap.example.com
+AUTH_LDAP_BIND_DN=cn=admin,dc=example,dc=com
+AUTH_LDAP_BIND_PASSWORD=your-password
+AUTH_LDAP_USER_DN=ou=users,dc=example,dc=com
+AUTH_LDAP_USER_ATTRIBUTE=uid
+AUTH_LDAP_USER_SCOPE=one
+AUTH_LDAP_MAIL_ATTRIBUTE=mail
+AUTH_LDAP_FIRST_NAME_ATTRIBUTE=givenName
+AUTH_LDAP_LAST_NAME_ATTRIBUTE=sn
+AUTH_LDAP_DEFAULT_ROLE_ID=role-uuid
+```
+
+### SAML Configuration
+
+```bash
+AUTH_SAML_DRIVER=saml
+AUTH_SAML_SP_ENTITY_ID=https://your-domain.com/auth/saml/metadata
+AUTH_SAML_SP_ACS_URL=https://your-domain.com/auth/saml/acs
+AUTH_SAML_IDP_METADATA_URL=https://idp.example.com/metadata
+AUTH_SAML_IDP_ENTITY_ID=https://idp.example.com
+AUTH_SAML_IDENTIFIER_KEY=http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier
+AUTH_SAML_EMAIL_KEY=http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress
+AUTH_SAML_DEFAULT_ROLE_ID=role-uuid
+```
+
+## Extensions Configuration
+
+```bash
+# Extensions directory (default: ./extensions)
+EXTENSIONS_PATH=./extensions
+
+# Package file location for extensions (default: .)
+PACKAGE_FILE_LOCATION=/path/to/package.json
+
+# Fail if extensions can't load (default: false)
+EXTENSIONS_MUST_LOAD=true
+
+# Auto-reload extensions on change (default: false)
+EXTENSIONS_AUTO_RELOAD=true
+
+# Extension cache TTL (default: unlimited)
+EXTENSIONS_CACHE_TTL=5m
+
+# Sandbox memory limit in MB (default: 100)
+EXTENSIONS_SANDBOX_MEMORY=100
+
+# Sandbox timeout in ms (default: 1000)
+EXTENSIONS_SANDBOX_TIMEOUT=5000
+
+# Extension limits
+EXTENSIONS_LIMIT=100
+```
+
+## GraphQL Configuration
+
+```bash
+# Enable GraphQL introspection (default: true)
+GRAPHQL_INTROSPECTION=true
+
+# Schema generation concurrency (default: 5)
+GRAPHQL_SCHEMA_GENERATION_MAX_CONCURRENT=5
+
+# Query token limit (default: 5000)
+GRAPHQL_QUERY_TOKEN_LIMIT=10000
+
+# Schema cache capacity
+GRAPHQL_SCHEMA_CACHE_CAPACITY=1000
+```
+
+## WebSockets Configuration
+
+```bash
+# Enable WebSockets (default: false)
+WEBSOCKETS_ENABLED=true
+
+# REST WebSocket support
+WEBSOCKETS_REST_ENABLED=true
+WEBSOCKETS_REST_PATH=/websocket
+WEBSOCKETS_REST_AUTH=handshake
+WEBSOCKETS_REST_AUTH_TIMEOUT=10
+
+# GraphQL WebSocket support
+WEBSOCKETS_GRAPHQL_ENABLED=true
+WEBSOCKETS_GRAPHQL_PATH=/graphql
+WEBSOCKETS_GRAPHQL_AUTH=handshake
+WEBSOCKETS_GRAPHQL_AUTH_TIMEOUT=10
+
+# Heartbeat configuration
+WEBSOCKETS_HEARTBEAT_ENABLED=true
+WEBSOCKETS_HEARTBEAT_PERIOD=30
+
+# Collaboration features
+WEBSOCKETS_COLLAB_ENABLED=true
+WEBSOCKETS_COLLAB_PERMISSIONS_CACHE_CAPACITY=2000
+```
+
+## Flows Configuration
+
+```bash
+# Allow environment variables in flows (default: false)
+FLOWS_ENV_ALLOW_LIST=API_KEY,SECRET_TOKEN
+
+# Run script operation memory limit in MB (default: 32)
+FLOWS_RUN_SCRIPT_MAX_MEMORY=32
+
+# Run script operation timeout in ms (default: 10000)
+FLOWS_RUN_SCRIPT_TIMEOUT=10000
+```
+
+## Performance & Limits
+
+```bash
+# Maximum relational depth (default: 10)
+MAX_RELATIONAL_DEPTH=10
+
+# Query string parsing depth (default: 10)
+QUERYSTRING_MAX_PARSE_DEPTH=10
+
+# Query string array limit (default: 500)
+QUERYSTRING_ARRAY_LIMIT=500
+
+# Default query limit (default: 100)
+QUERY_LIMIT_DEFAULT=100
+
+# Maximum query limit
+QUERY_LIMIT_MAX=5000
+
+# Maximum batch mutations (default: unlimited)
+MAX_BATCH_MUTATION=100
+
+# Maximum import errors (default: 1000)
+MAX_IMPORT_ERRORS=1000
+
+# Relational batch size (default: 25000)
+RELATIONAL_BATCH_SIZE=25000
+
+# Export batch size (default: 5000)
+EXPORT_BATCH_SIZE=5000
+
+# User access limits
+USERS_ADMIN_ACCESS_LIMIT=10
+USERS_APP_ACCESS_LIMIT=100
+USERS_API_ACCESS_LIMIT=1000
+```
+
+## Metrics & Monitoring
+
+```bash
+# Enable metrics endpoint (default: false)
+METRICS_ENABLED=true
+
+# Services to monitor (default: database,cache,redis,storage)
+METRICS_SERVICES=database,cache,redis,storage
+
+# Metrics collection schedule (default: */1 * * * *)
+METRICS_SCHEDULE=*/1 * * * *
+
+# Metrics name prefix (default: directus_)
+METRICS_NAME_PREFIX=directus_
+
+# Authentication tokens for metrics endpoint
+METRICS_TOKENS=secret-token-1,secret-token-2
+```
+
+## Admin Account
+
+First-time setup only (automatically removed after bootstrap):
+
+```bash
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=your-secure-password
+ADMIN_TOKEN=static-admin-token
+```
+
+## Telemetry
+
+```bash
+# Enable anonymous telemetry (default: true)
+TELEMETRY=false
+```
+
+## AI & MCP
+
+```bash
+# Enable AI features (default: true)
+AI_ENABLED=true
+
+# Enable Model Context Protocol (default: true)
+MCP_ENABLED=true
+```
+
+## Production Checklist
+
+Before deploying to production, ensure:
+
+- [ ] `SECRET` is set to a cryptographically secure random string (min 32 characters)
+- [ ] `PUBLIC_URL` is set to your production domain
+- [ ] Database credentials are secure and not default values
+- [ ] `NODE_ENV=production` is set
+- [ ] HTTPS is enabled with valid SSL certificate
+- [ ] CORS is configured with specific origins (not `*`)
+- [ ] Rate limiting is enabled and configured
+- [ ] Caching is enabled with Redis for production
+- [ ] Email is configured for password resets
+- [ ] Backups are automated and tested
+- [ ] Monitoring and logging are configured
+- [ ] File storage uses S3-compatible service (not local in production)
+- [ ] Admin credentials are changed from defaults
+- [ ] Database connection pooling is configured
+- [ ] Server has adequate resources (CPU, RAM, disk)
+
+## Environment Variable Priority
+
+When multiple configuration sources exist, Directus uses this priority order:
+
+1. Environment variables (highest priority)
+2. Config file specified by `CONFIG_PATH`
+3. `.env` file in project root
+4. Default values (lowest priority)
+
+## Security Best Practices
+
+1. **Never commit `.env` files** - Add to `.gitignore`
+2. **Use strong secrets** - Generate with: `openssl rand -base64 32`
+3. **Rotate secrets regularly** - Especially after team member changes
+4. **Limit permissions** - Use read-only database users where possible
+5. **Enable rate limiting** - Protect against brute force attacks
+6. **Configure CORS strictly** - Only allow necessary origins
+7. **Use HTTPS everywhere** - Never transmit credentials over HTTP
+8. **Keep Directus updated** - Apply security patches promptly
+
+## Next Steps
+
+- Review [Docker deployment](/deployment/docker) for containerized setup
+- Configure [authentication providers](/deployment/configuration#authentication)
+- Set up [monitoring](/deployment/configuration#metrics--monitoring)
+- Implement [backup strategy](/deployment/self-hosted#backup-strategy)

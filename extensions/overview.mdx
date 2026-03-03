@@ -1,0 +1,130 @@
+---
+title: Extensions Overview
+description: Extend Directus with custom functionality
+---
+
+Directus is built to be modular and extensible. You can create custom extensions to add new functionality to both the API and admin app.
+
+## Extension Types
+
+<CardGroup cols={2}>
+  <Card title="Interfaces" icon="input-text" href="/extensions/interfaces">
+    Custom field input components
+  </Card>
+  <Card title="Layouts" icon="table-layout" href="/extensions/layouts">
+    Custom ways to view collection items
+  </Card>
+  <Card title="Displays" icon="eye" href="/extensions/displays">
+    Custom field display components
+  </Card>
+  <Card title="Panels" icon="chart-simple" href="/extensions/panels">
+    Custom dashboard panel types
+  </Card>
+  <Card title="Modules" icon="grid" href="/extensions/modules">
+    Full custom pages and navigation
+  </Card>
+  <Card title="Operations" icon="diagram-project" href="/extensions/operations">
+    Custom flow operation types
+  </Card>
+  <Card title="Hooks" icon="webhook" href="/extensions/hooks">
+    Server-side event hooks
+  </Card>
+  <Card title="Endpoints" icon="code" href="/extensions/endpoints">
+    Custom API endpoints
+  </Card>
+</CardGroup>
+
+## Creating Extensions
+
+Use the create-directus-extension package to scaffold new extensions:
+
+```bash
+npm init directus-extension
+```
+
+This interactive CLI will guide you through creating an extension.
+
+## Extension Structure
+
+All extensions follow a similar structure:
+
+```
+my-extension/
+├── src/
+│   └── index.ts
+├── package.json
+└── README.md
+```
+
+## Installing Extensions
+
+### Local Extensions
+
+Place extensions in the `extensions` folder:
+
+```
+project/
+├── extensions/
+│   ├── interfaces/
+│   │   └── my-interface/
+│   ├── modules/
+│   │   └── my-module/
+│   └── hooks/
+│       └── my-hook/
+```
+
+### Extension Packages
+
+Install from npm:
+
+```bash
+npm install directus-extension-name
+```
+
+Configure in your environment:
+
+```bash
+EXTENSIONS_AUTO_RELOAD=true
+```
+
+## Extension Marketplace
+
+Browse and install extensions directly from the admin app:
+
+**Settings > Extensions > Marketplace**
+
+## Development
+
+### Hot Reload
+
+Enable automatic reloading during development:
+
+```bash
+EXTENSIONS_AUTO_RELOAD=true
+```
+
+### Building
+
+Build your extension:
+
+```bash
+npm run build
+```
+
+### Testing
+
+Link your extension for local testing:
+
+```bash
+cd my-extension
+npm link
+
+cd /path/to/directus
+npm link my-extension
+```
+
+## Next Steps
+
+<Card title="Extensions SDK" icon="code" href="/extensions/interfaces">
+  Start building your first extension
+</Card>

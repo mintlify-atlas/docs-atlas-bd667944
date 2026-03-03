@@ -1,0 +1,115 @@
+---
+title: Users
+description: Manage users and authentication
+---
+
+The Users API allows you to manage user accounts.
+
+## List Users
+
+```bash
+GET /users
+```
+
+**Example:**
+
+```bash
+curl "https://your-directus-instance.com/users" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+## Get User
+
+```bash
+GET /users/:id
+```
+
+## Get Current User
+
+```bash
+GET /users/me
+```
+
+## Create User
+
+```bash
+POST /users
+```
+
+**Request Body:**
+
+```json
+{
+  "email": "user@example.com",
+  "password": "secure-password",
+  "role": "role-uuid",
+  "first_name": "John",
+  "last_name": "Doe"
+}
+```
+
+## Update User
+
+```bash
+PATCH /users/:id
+```
+
+## Delete User
+
+```bash
+DELETE /users/:id
+```
+
+## Invite User
+
+Send an invitation email:
+
+```bash
+POST /users/invite
+```
+
+**Request Body:**
+
+```json
+{
+  "email": "newuser@example.com",
+  "role": "role-uuid"
+}
+```
+
+## User Properties
+
+<ResponseField name="id" type="string">
+  User UUID
+</ResponseField>
+
+<ResponseField name="email" type="string">
+  Email address
+</ResponseField>
+
+<ResponseField name="first_name" type="string">
+  First name
+</ResponseField>
+
+<ResponseField name="last_name" type="string">
+  Last name
+</ResponseField>
+
+<ResponseField name="role" type="string">
+  Role UUID
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  User status: `active`, `invited`, `draft`, `suspended`, `archived`
+</ResponseField>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Roles" icon="user-shield" href="/api/rest/roles">
+    Manage roles
+  </Card>
+  <Card title="Permissions" icon="lock" href="/api/rest/permissions">
+    Manage permissions
+  </Card>
+</CardGroup>

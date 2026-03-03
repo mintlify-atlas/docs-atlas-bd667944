@@ -1,0 +1,277 @@
+---
+title: Development Environment Setup
+description: Set up your local development environment for contributing to Directus
+---
+
+This guide will help you set up your local development environment to contribute to Directus.
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+- **Node.js 22** - Required version for development
+- **pnpm >=10 and &lt;11** - Package manager used by Directus
+- **Git** - For version control
+
+### Installing Node.js
+
+We recommend using a version manager like [nvm](https://github.com/nvm-sh/nvm) or [volta](https://volta.sh/) to manage Node.js versions:
+
+```bash
+# Using nvm
+nvm install 22
+nvm use 22
+
+# Using volta
+volta install node@22
+```
+
+### Installing pnpm
+
+Install pnpm globally:
+
+```bash
+npm install -g pnpm@10
+```
+
+Or use corepack (recommended):
+
+```bash
+corepack enable
+corepack prepare pnpm@10 --activate
+```
+
+## Clone the Repository
+
+Fork the Directus repository on GitHub, then clone your fork:
+
+```bash
+git clone https://github.com/YOUR_USERNAME/directus.git
+cd directus
+```
+
+Add the upstream remote to stay in sync with the main repository:
+
+```bash
+git remote add upstream https://github.com/directus/directus.git
+```
+
+## Install Dependencies
+
+Install all dependencies for the monorepo:
+
+```bash
+pnpm install
+```
+
+This will install dependencies for all packages in the workspace.
+
+## Build the Project
+
+Build all packages in the monorepo:
+
+```bash
+pnpm build
+```
+
+To build a specific package:
+
+```bash
+pnpm --filter @directus/api build
+```
+
+## Running Development Servers
+
+### API Server
+
+Run the API development server with hot reload:
+
+```bash
+cd api
+pnpm dev
+```
+
+The API will be available at `http://localhost:8055`.
+
+### App Dashboard
+
+Run the App development server with Vite HMR:
+
+```bash
+cd app
+pnpm dev
+```
+
+The App will be available at `http://localhost:8080`.
+
+### Running Both Servers
+
+You can run both servers simultaneously in separate terminal windows or tabs.
+
+## Database Setup
+
+Directus supports multiple SQL databases. For local development, you can use:
+
+- **SQLite** - Simplest option, no setup required
+- **PostgreSQL** - Recommended for production-like development
+- **MySQL/MariaDB** - Alternative option
+
+### Using SQLite
+
+Create a `.env` file in the `/api` directory:
+
+```bash
+DB_CLIENT=sqlite3
+DB_FILENAME=./data.db
+
+KEY=replace-with-random-value
+SECRET=replace-with-random-value
+
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=password
+```
+
+### Using PostgreSQL
+
+First, ensure PostgreSQL is running, then create a `.env` file in the `/api` directory:
+
+```bash
+DB_CLIENT=pg
+DB_HOST=localhost
+DB_PORT=5432
+DB_DATABASE=directus
+DB_USER=postgres
+DB_PASSWORD=postgres
+
+KEY=replace-with-random-value
+SECRET=replace-with-random-value
+
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=password
+```
+
+## Linting and Formatting
+
+Before submitting a pull request, ensure your code passes all linting and formatting checks:
+
+```bash
+# Check for linting errors
+pnpm lint
+
+# Check for style errors
+pnpm lint:style
+
+# Check code formatting
+pnpm format
+```
+
+### Auto-fixing Issues
+
+Many issues can be automatically fixed:
+
+```bash
+# Auto-fix ESLint issues
+pnpm lint --fix
+
+# Auto-fix Stylelint issues
+pnpm lint:style --fix
+
+# Auto-format with Prettier
+prettier --cache --write .
+```
+
+## Testing
+
+Run the test suite to ensure your changes don't break existing functionality:
+
+```bash
+# Run all unit tests
+pnpm test
+
+# Run tests for a specific package
+pnpm --filter @directus/api test
+
+# Run tests in watch mode (within a package directory)
+cd api
+pnpm test:watch
+
+# Run tests with coverage
+pnpm test:coverage
+```
+
+### Blackbox/E2E Tests
+
+Blackbox tests require building the project first:
+
+```bash
+# Build and run blackbox tests
+pnpm test:blackbox
+
+# Run against a specific database
+TEST_DB=postgres pnpm test:blackbox
+```
+
+## Development Tips
+
+### Working with the Monorepo
+
+Directus uses pnpm workspaces. To run commands in a specific package:
+
+```bash
+# Run a command in a specific package
+pnpm --filter @directus/api <command>
+
+# Build only dependencies of a package
+pnpm --filter @directus/api... build
+```
+
+### Dependency Management
+
+When adding dependencies:
+
+- Use `workspace:*` for internal package dependencies
+- Use `catalog:` for external dependencies (versions defined in `pnpm-workspace.yaml`)
+- Add new shared dependencies to the catalog first
+
+### Staying Up to Date
+
+Regularly sync your fork with the upstream repository:
+
+```bash
+git fetch upstream
+git checkout main
+git merge upstream/main
+pnpm install
+pnpm build
+```
+
+## Troubleshooting
+
+### Build Errors
+
+If you encounter build errors:
+
+1. Clear the pnpm cache: `pnpm store prune`
+2. Remove `node_modules`: `rm -rf node_modules packages/*/node_modules`
+3. Reinstall dependencies: `pnpm install`
+4. Rebuild: `pnpm build`
+
+### Port Already in Use
+
+If the default ports are already in use, you can specify different ports:
+
+```bash
+# API
+PORT=8056 pnpm dev
+
+# App
+VITE_PORT=8081 pnpm dev
+```
+
+## Next Steps
+
+Now that your development environment is set up:
+
+- Learn about the [codebase structure](/contributing/codebase-structure)
+- Review the [pull request guidelines](/contributing/pull-requests)
+- Start contributing!

@@ -1,0 +1,625 @@
+---
+title: "SDK Users Operations"
+description: "Manage users and retrieve current user information in Directus"
+---
+
+## Overview
+
+The Directus SDK provides comprehensive user management capabilities, including reading user data, updating user profiles, and accessing the current authenticated user's information.
+
+## Read Operations
+
+### Read All Users
+
+Retrieve a list of all users:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { createDirectus, rest, readUsers } from '@directus/sdk';
+
+const client = createDirectus<Schema>('https://your-directus-url.com')
+  .with(rest());
+
+const users = await client.request(
+  readUsers()
+);
+
+users.forEach(user => {
+  console.log(user.email);
+  console.log(user.first_name);
+  console.log(user.last_name);
+});
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { createDirectus, rest, readUsers } from '@directus/sdk';
+
+const client = createDirectus('https://your-directus-url.com')
+  .with(rest());
+
+const users = await client.request(
+  readUsers()
+);
+```
+  </Tab>
+</Tabs>
+
+### Read Users with Query
+
+Filter, sort, and select specific user fields:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { readUsers } from '@directus/sdk';
+
+const activeUsers = await client.request(
+  readUsers({
+    filter: {
+      status: { _eq: 'active' },
+    },
+    fields: ['id', 'email', 'first_name', 'last_name', 'role.name'],
+    sort: ['first_name', 'last_name'],
+    limit: 50,
+  })
+);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { readUsers } from '@directus/sdk';
+
+const activeUsers = await client.request(
+  readUsers({
+    filter: {
+      status: { _eq: 'active' },
+    },
+    fields: ['id', 'email', 'first_name', 'last_name'],
+  })
+);
+```
+  </Tab>
+</Tabs>
+
+### Read Single User
+
+Retrieve a specific user by ID:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { readUser } from '@directus/sdk';
+
+const user = await client.request(
+  readUser('user-id', {
+    fields: ['*', 'role.*', 'avatar.*'],
+  })
+);
+
+console.log(user.email);
+console.log(user.role?.name);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { readUser } from '@directus/sdk';
+
+const user = await client.request(
+  readUser('user-id')
+);
+```
+  </Tab>
+</Tabs>
+
+### Read Current User
+
+Retrieve the currently authenticated user's information:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { readMe } from '@directus/sdk';
+
+const currentUser = await client.request(
+  readMe({
+    fields: ['*', 'role.*', 'avatar.*'],
+  })
+);
+
+console.log(`Logged in as: ${currentUser.email}`);
+console.log(`Role: ${currentUser.role?.name}`);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { readMe } from '@directus/sdk';
+
+const currentUser = await client.request(
+  readMe()
+);
+
+console.log(`Logged in as: ${currentUser.email}`);
+```
+  </Tab>
+</Tabs>
+
+## Create Operations
+
+### Create Single User
+
+Create a new user:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { createUser } from '@directus/sdk';
+
+const newUser = await client.request(
+  createUser({
+    email: 'newuser@example.com',
+    password: 'secure-password',
+    first_name: 'John',
+    last_name: 'Doe',
+    role: 'role-id',
+    status: 'active',
+  })
+);
+
+console.log(`Created user: ${newUser.id}`);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { createUser } from '@directus/sdk';
+
+const newUser = await client.request(
+  createUser({
+    email: 'newuser@example.com',
+    password: 'secure-password',
+    role: 'role-id',
+  })
+);
+```
+  </Tab>
+</Tabs>
+
+### Create Multiple Users
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { createUsers } from '@directus/sdk';
+
+const newUsers = await client.request(
+  createUsers([
+    {
+      email: 'user1@example.com',
+      password: 'password1',
+      role: 'role-id',
+    },
+    {
+      email: 'user2@example.com',
+      password: 'password2',
+      role: 'role-id',
+    },
+  ])
+);
+
+console.log(`Created ${newUsers.length} users`);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { createUsers } from '@directus/sdk';
+
+const newUsers = await client.request(
+  createUsers([
+    { email: 'user1@example.com', password: 'password1', role: 'role-id' },
+    { email: 'user2@example.com', password: 'password2', role: 'role-id' },
+  ])
+);
+```
+  </Tab>
+</Tabs>
+
+## Update Operations
+
+### Update Single User
+
+Update a user's information:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { updateUser } from '@directus/sdk';
+
+const updatedUser = await client.request(
+  updateUser('user-id', {
+    first_name: 'Jane',
+    last_name: 'Smith',
+    title: 'Senior Developer',
+  })
+);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { updateUser } from '@directus/sdk';
+
+const updatedUser = await client.request(
+  updateUser('user-id', {
+    first_name: 'Jane',
+  })
+);
+```
+  </Tab>
+</Tabs>
+
+### Update Current User
+
+Update the currently authenticated user's profile:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { updateMe } from '@directus/sdk';
+
+const updatedProfile = await client.request(
+  updateMe({
+    first_name: 'Updated Name',
+    description: 'Updated bio',
+    avatar: 'file-id',
+  })
+);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { updateMe } from '@directus/sdk';
+
+const updatedProfile = await client.request(
+  updateMe({
+    first_name: 'Updated Name',
+  })
+);
+```
+  </Tab>
+</Tabs>
+
+### Update Multiple Users
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { updateUsers } from '@directus/sdk';
+
+const updatedUsers = await client.request(
+  updateUsers(['user-id-1', 'user-id-2'], {
+    status: 'suspended',
+  })
+);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { updateUsers } from '@directus/sdk';
+
+const updatedUsers = await client.request(
+  updateUsers(['user-id-1', 'user-id-2'], {
+    status: 'suspended',
+  })
+);
+```
+  </Tab>
+</Tabs>
+
+## Delete Operations
+
+### Delete Single User
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { deleteUser } from '@directus/sdk';
+
+await client.request(
+  deleteUser('user-id')
+);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { deleteUser } from '@directus/sdk';
+
+await client.request(deleteUser('user-id'));
+```
+  </Tab>
+</Tabs>
+
+### Delete Multiple Users
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { deleteUsers } from '@directus/sdk';
+
+await client.request(
+  deleteUsers(['user-id-1', 'user-id-2'])
+);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { deleteUsers } from '@directus/sdk';
+
+await client.request(
+  deleteUsers(['user-id-1', 'user-id-2'])
+);
+```
+  </Tab>
+</Tabs>
+
+## User Properties
+
+The DirectusUser object contains these key properties:
+
+```typescript
+interface DirectusUser {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string;
+  password?: string; // Only for create/update
+  location: string | null;
+  title: string | null;
+  description: string | null;
+  tags: string[] | null;
+  avatar: string | DirectusFile | null;
+  language: string | null;
+  tfa_secret: string | null;
+  status: 'active' | 'invited' | 'draft' | 'suspended' | 'archived';
+  role: string | DirectusRole | null;
+  token: string | null;
+  last_access: string | null;
+  last_page: string | null;
+  provider: string;
+  external_identifier: string | null;
+  auth_data: Record<string, any> | null;
+  email_notifications: boolean;
+  appearance: string | null;
+  theme_dark: string | null;
+  theme_light: string | null;
+  theme_light_overrides: Record<string, any> | null;
+  theme_dark_overrides: Record<string, any> | null;
+}
+```
+
+## Working with Roles
+
+### Read Users with Role Information
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { readUsers } from '@directus/sdk';
+
+const usersWithRoles = await client.request(
+  readUsers({
+    fields: ['id', 'email', 'role.id', 'role.name', 'role.admin_access'],
+  })
+);
+
+usersWithRoles.forEach(user => {
+  console.log(`${user.email}: ${user.role?.name}`);
+});
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { readUsers } from '@directus/sdk';
+
+const usersWithRoles = await client.request(
+  readUsers({
+    fields: ['id', 'email', 'role.name'],
+  })
+);
+```
+  </Tab>
+</Tabs>
+
+### Filter Users by Role
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { readUsers } from '@directus/sdk';
+
+const admins = await client.request(
+  readUsers({
+    filter: {
+      'role.admin_access': { _eq: true },
+    },
+    fields: ['*', 'role.*'],
+  })
+);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { readUsers } from '@directus/sdk';
+
+const admins = await client.request(
+  readUsers({
+    filter: {
+      'role.admin_access': { _eq: true },
+    },
+  })
+);
+```
+  </Tab>
+</Tabs>
+
+## Password Management
+
+### Request Password Reset
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { passwordRequest } from '@directus/sdk';
+
+await client.request(
+  passwordRequest('user@example.com')
+);
+
+console.log('Password reset email sent');
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { passwordRequest } from '@directus/sdk';
+
+await client.request(
+  passwordRequest('user@example.com')
+);
+```
+  </Tab>
+</Tabs>
+
+### Reset Password
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { passwordReset } from '@directus/sdk';
+
+await client.request(
+  passwordReset('reset-token', 'new-password')
+);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { passwordReset } from '@directus/sdk';
+
+await client.request(
+  passwordReset('reset-token', 'new-password')
+);
+```
+  </Tab>
+</Tabs>
+
+## User Invitations
+
+### Invite User
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { inviteUser } from '@directus/sdk';
+
+const invitation = await client.request(
+  inviteUser('newuser@example.com', 'role-id')
+);
+
+console.log('Invitation sent');
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { inviteUser } from '@directus/sdk';
+
+await client.request(
+  inviteUser('newuser@example.com', 'role-id')
+);
+```
+  </Tab>
+</Tabs>
+
+### Accept User Invitation
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { acceptUserInvite } from '@directus/sdk';
+
+await client.request(
+  acceptUserInvite('invitation-token', 'secure-password')
+);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { acceptUserInvite } from '@directus/sdk';
+
+await client.request(
+  acceptUserInvite('invitation-token', 'secure-password')
+);
+```
+  </Tab>
+</Tabs>
+
+## Type Signatures
+
+```typescript
+// Read operations
+function readUsers<Schema, TQuery>(
+  query?: TQuery
+): RestCommand<DirectusUser<Schema>[], Schema>;
+
+function readUser<Schema, TQuery>(
+  key: string,
+  query?: TQuery
+): RestCommand<DirectusUser<Schema>, Schema>;
+
+function readMe<Schema, TQuery>(
+  query?: TQuery
+): RestCommand<DirectusUser<Schema>, Schema>;
+
+// Create operations
+function createUser<Schema, TQuery>(
+  user: Partial<DirectusUser<Schema>>,
+  query?: TQuery
+): RestCommand<DirectusUser<Schema>, Schema>;
+
+// Update operations
+function updateUser<Schema, TQuery>(
+  key: string,
+  data: Partial<DirectusUser<Schema>>,
+  query?: TQuery
+): RestCommand<DirectusUser<Schema>, Schema>;
+
+function updateMe<Schema, TQuery>(
+  data: Partial<DirectusUser<Schema>>,
+  query?: TQuery
+): RestCommand<DirectusUser<Schema>, Schema>;
+
+// Delete operations
+function deleteUser<Schema>(
+  key: string
+): RestCommand<void, Schema>;
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+
+<Card title="Authentication" icon="lock" href="/api/sdk/authentication">
+  Learn about user authentication
+</Card>
+
+<Card title="Roles" icon="shield" href="/api/sdk/roles">
+  Manage user roles and permissions
+</Card>
+
+<Card title="Files" icon="file" href="/api/sdk/files">
+  Manage user avatars and files
+</Card>
+
+<Card title="Activity" icon="clock" href="/api/sdk/activity">
+  Track user activity and actions
+</Card>
+
+</CardGroup>

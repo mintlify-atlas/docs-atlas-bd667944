@@ -1,0 +1,186 @@
+---
+title: "SDK Installation"
+description: "Install and set up the Directus JavaScript SDK"
+---
+
+## Overview
+
+The Directus JavaScript SDK provides a TypeScript-first, modular, and lightweight client for interacting with the Directus API. It has zero external dependencies and works in both browser and Node.js environments.
+
+## Features
+
+- **TypeScript first:** Robust and type-safe development experience
+- **Modular architecture:** Mix and match features to compose a custom client
+- **Lightweight and dependency-free:** No external libraries required
+- **Works everywhere:** Browser, Node.js, and edge runtimes
+
+## Installation
+
+Install the SDK using your preferred package manager:
+
+<CodeGroup>
+
+```bash npm
+npm install @directus/sdk
+```
+
+```bash yarn
+yarn add @directus/sdk
+```
+
+```bash pnpm
+pnpm add @directus/sdk
+```
+
+</CodeGroup>
+
+## Requirements
+
+- Node.js 22 or higher (for server-side usage)
+- Modern browser with ES modules support (for client-side usage)
+
+## Basic Setup
+
+The SDK uses a composable architecture. Start by creating a base client, then add features as needed:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { createDirectus, rest } from '@directus/sdk';
+
+interface Article {
+  id: number;
+  title: string;
+  content: string;
+}
+
+interface Schema {
+  articles: Article[];
+}
+
+const client = createDirectus<Schema>('https://your-directus-url.com')
+  .with(rest());
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { createDirectus, rest } from '@directus/sdk';
+
+const client = createDirectus('https://your-directus-url.com')
+  .with(rest());
+```
+  </Tab>
+</Tabs>
+
+## Available Composables
+
+The SDK provides several composable features that can be added to your client:
+
+- **`rest()`** - REST API request functions (adds `.request()` method)
+- **`graphql()`** - GraphQL query functions (adds `.query()` method)
+- **`authentication()`** - Full authentication with login/logout/refresh
+- **`staticToken()`** - Static token authentication
+- **`realtime()`** - WebSocket connectivity for real-time updates
+
+## Creating a Full-Featured Client
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { 
+  createDirectus, 
+  rest, 
+  authentication 
+} from '@directus/sdk';
+
+interface Schema {
+  articles: Article[];
+  users: User[];
+}
+
+const client = createDirectus<Schema>('https://your-directus-url.com')
+  .with(rest())
+  .with(authentication('json'));
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { createDirectus, rest, authentication } from '@directus/sdk';
+
+const client = createDirectus('https://your-directus-url.com')
+  .with(rest())
+  .with(authentication('json'));
+```
+  </Tab>
+</Tabs>
+
+## TypeScript Schema Definition
+
+For full type safety, define your schema interface:
+
+```typescript
+interface MySchema {
+  // Regular collections are array types
+  articles: Article[];
+  categories: Category[];
+  
+  // Singleton collections are object types
+  settings: Settings;
+  
+  // Junction tables for many-to-many relationships
+  articles_categories: ArticleCategory[];
+}
+
+interface Article {
+  id: number;
+  status: string;
+  title: string;
+  content: string;
+  // Relations can be IDs or nested objects
+  author: number | User;
+  categories: number[] | ArticleCategory[];
+}
+
+interface Settings {
+  id: number;
+  site_name: string;
+  maintenance_mode: boolean;
+}
+```
+
+## Custom Globals
+
+You can provide custom implementations for fetch, WebSocket, URL, and logger:
+
+```typescript
+import { createDirectus } from '@directus/sdk';
+import fetch from 'node-fetch';
+
+const client = createDirectus('https://your-directus-url.com', {
+  globals: {
+    fetch: fetch as any,
+  },
+});
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+
+<Card title="Authentication" icon="lock" href="/api/sdk/authentication">
+  Learn how to authenticate with the SDK
+</Card>
+
+<Card title="Items Operations" icon="database" href="/api/sdk/items">
+  Work with collection items (CRUD operations)
+</Card>
+
+<Card title="Real-time" icon="bolt" href="/api/sdk/real-time">
+  Subscribe to real-time updates via WebSocket
+</Card>
+
+<Card title="Files" icon="file" href="/api/sdk/files">
+  Upload and manage files
+</Card>
+
+</CardGroup>

@@ -1,0 +1,537 @@
+---
+title: "SDK Files Operations"
+description: "Upload, manage, and retrieve files in Directus"
+---
+
+## Overview
+
+The Directus SDK provides comprehensive file management capabilities, including uploading files, importing from URLs, retrieving file metadata, and managing file organization.
+
+## Read Operations
+
+### Read All Files
+
+Retrieve a list of all files:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { createDirectus, rest, readFiles } from '@directus/sdk';
+
+const client = createDirectus<Schema>('https://your-directus-url.com')
+  .with(rest());
+
+const files = await client.request(
+  readFiles()
+);
+
+files.forEach(file => {
+  console.log(file.filename_download);
+  console.log(file.type);
+  console.log(file.filesize);
+});
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { createDirectus, rest, readFiles } from '@directus/sdk';
+
+const client = createDirectus('https://your-directus-url.com')
+  .with(rest());
+
+const files = await client.request(
+  readFiles()
+);
+```
+  </Tab>
+</Tabs>
+
+### Read Files with Query
+
+Filter, sort, and paginate files:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { readFiles } from '@directus/sdk';
+
+const images = await client.request(
+  readFiles({
+    filter: {
+      type: { _starts_with: 'image/' },
+    },
+    sort: ['-uploaded_on'],
+    limit: 20,
+    fields: ['id', 'filename_download', 'type', 'filesize', 'width', 'height'],
+  })
+);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { readFiles } from '@directus/sdk';
+
+const images = await client.request(
+  readFiles({
+    filter: {
+      type: { _starts_with: 'image/' },
+    },
+    sort: ['-uploaded_on'],
+    limit: 20,
+  })
+);
+```
+  </Tab>
+</Tabs>
+
+### Read Single File
+
+Retrieve a specific file by ID:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { readFile } from '@directus/sdk';
+
+const file = await client.request(
+  readFile('file-id-here')
+);
+
+console.log(file.filename_download);
+console.log(file.title);
+console.log(file.description);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { readFile } from '@directus/sdk';
+
+const file = await client.request(
+  readFile('file-id-here')
+);
+```
+  </Tab>
+</Tabs>
+
+## Upload Operations
+
+### Upload Single File
+
+Upload a file using FormData:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { uploadFiles } from '@directus/sdk';
+
+// Browser example
+const formData = new FormData();
+formData.append('file', fileInput.files[0]);
+formData.append('title', 'My Image');
+formData.append('folder', 'folder-id');
+
+const uploadedFile = await client.request(
+  uploadFiles(formData)
+);
+
+console.log(uploadedFile.id);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { uploadFiles } from '@directus/sdk';
+
+const formData = new FormData();
+formData.append('file', fileInput.files[0]);
+formData.append('title', 'My Image');
+
+const uploadedFile = await client.request(
+  uploadFiles(formData)
+);
+```
+  </Tab>
+</Tabs>
+
+### Upload with Metadata
+
+Include additional metadata with your file upload:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { uploadFiles } from '@directus/sdk';
+
+const formData = new FormData();
+formData.append('file', file);
+formData.append('title', 'Product Image');
+formData.append('description', 'Main product photo');
+formData.append('folder', 'products-folder-id');
+formData.append('tags', JSON.stringify(['product', 'featured']));
+
+const uploadedFile = await client.request(
+  uploadFiles(formData, {
+    fields: ['*'],
+  })
+);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { uploadFiles } from '@directus/sdk';
+
+const formData = new FormData();
+formData.append('file', file);
+formData.append('title', 'Product Image');
+formData.append('folder', 'products-folder-id');
+
+const uploadedFile = await client.request(
+  uploadFiles(formData)
+);
+```
+  </Tab>
+</Tabs>
+
+### Import File from URL
+
+Import a file directly from a URL:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { importFile } from '@directus/sdk';
+
+const importedFile = await client.request(
+  importFile(
+    'https://example.com/image.jpg',
+    {
+      title: 'Imported Image',
+      description: 'Image imported from URL',
+      folder: 'folder-id',
+    }
+  )
+);
+
+console.log(importedFile.id);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { importFile } from '@directus/sdk';
+
+const importedFile = await client.request(
+  importFile('https://example.com/image.jpg', {
+    title: 'Imported Image',
+  })
+);
+```
+  </Tab>
+</Tabs>
+
+## Update Operations
+
+### Update File Metadata
+
+Update file metadata without re-uploading:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { updateFile } from '@directus/sdk';
+
+const updatedFile = await client.request(
+  updateFile('file-id', {
+    title: 'Updated Title',
+    description: 'New description',
+    tags: ['updated', 'featured'],
+  })
+);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { updateFile } from '@directus/sdk';
+
+const updatedFile = await client.request(
+  updateFile('file-id', {
+    title: 'Updated Title',
+  })
+);
+```
+  </Tab>
+</Tabs>
+
+### Update Multiple Files
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { updateFiles } from '@directus/sdk';
+
+const updatedFiles = await client.request(
+  updateFiles(['file-id-1', 'file-id-2'], {
+    folder: 'new-folder-id',
+  })
+);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { updateFiles } from '@directus/sdk';
+
+const updatedFiles = await client.request(
+  updateFiles(['file-id-1', 'file-id-2'], {
+    folder: 'new-folder-id',
+  })
+);
+```
+  </Tab>
+</Tabs>
+
+## Delete Operations
+
+### Delete Single File
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { deleteFile } from '@directus/sdk';
+
+await client.request(
+  deleteFile('file-id')
+);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { deleteFile } from '@directus/sdk';
+
+await client.request(deleteFile('file-id'));
+```
+  </Tab>
+</Tabs>
+
+### Delete Multiple Files
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { deleteFiles } from '@directus/sdk';
+
+await client.request(
+  deleteFiles(['file-id-1', 'file-id-2', 'file-id-3'])
+);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { deleteFiles } from '@directus/sdk';
+
+await client.request(
+  deleteFiles(['file-id-1', 'file-id-2'])
+);
+```
+  </Tab>
+</Tabs>
+
+## File Properties
+
+The DirectusFile object contains these key properties:
+
+```typescript
+interface DirectusFile {
+  id: string;
+  storage: string;
+  filename_disk: string;
+  filename_download: string;
+  title: string | null;
+  type: string;
+  folder: string | null;
+  uploaded_by: string | null;
+  uploaded_on: string;
+  modified_by: string | null;
+  modified_on: string;
+  charset: string | null;
+  filesize: number;
+  width: number | null;
+  height: number | null;
+  duration: number | null;
+  embed: string | null;
+  description: string | null;
+  location: string | null;
+  tags: string[] | null;
+  metadata: Record<string, any> | null;
+}
+```
+
+## Accessing File URLs
+
+To access the actual file, construct the URL:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+const file = await client.request(
+  readFile('file-id')
+);
+
+const fileUrl = `${client.url}/assets/${file.id}`;
+
+// With transformations for images
+const thumbnailUrl = `${client.url}/assets/${file.id}?width=200&height=200&fit=cover`;
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+const file = await client.request(
+  readFile('file-id')
+);
+
+const fileUrl = `${client.url}/assets/${file.id}`;
+```
+  </Tab>
+</Tabs>
+
+## Working with Folders
+
+### Read Folders
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { readFolders } from '@directus/sdk';
+
+const folders = await client.request(
+  readFolders()
+);
+
+folders.forEach(folder => {
+  console.log(folder.name);
+  console.log(folder.parent); // Parent folder ID
+});
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { readFolders } from '@directus/sdk';
+
+const folders = await client.request(
+  readFolders()
+);
+```
+  </Tab>
+</Tabs>
+
+### Create Folder
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { createFolder } from '@directus/sdk';
+
+const newFolder = await client.request(
+  createFolder({
+    name: 'Products',
+    parent: null, // Root level
+  })
+);
+
+console.log(newFolder.id);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { createFolder } from '@directus/sdk';
+
+const newFolder = await client.request(
+  createFolder({
+    name: 'Products',
+  })
+);
+```
+  </Tab>
+</Tabs>
+
+## Node.js File Upload Example
+
+Upload files in a Node.js environment:
+
+```typescript
+import { createDirectus, rest, staticToken, uploadFiles } from '@directus/sdk';
+import { readFile } from 'fs/promises';
+import FormData from 'form-data';
+
+const client = createDirectus('https://your-directus-url.com')
+  .with(rest())
+  .with(staticToken('your-token'));
+
+const fileBuffer = await readFile('./path/to/image.jpg');
+const formData = new FormData();
+formData.append('file', fileBuffer, 'image.jpg');
+formData.append('title', 'Uploaded from Node.js');
+
+const uploadedFile = await client.request(
+  uploadFiles(formData as any)
+);
+
+console.log(`Uploaded file ID: ${uploadedFile.id}`);
+```
+
+## Type Signatures
+
+```typescript
+// Read operations
+function readFiles<Schema, TQuery>(
+  query?: TQuery
+): RestCommand<DirectusFile<Schema>[], Schema>;
+
+function readFile<Schema, TQuery>(
+  key: string,
+  query?: TQuery
+): RestCommand<DirectusFile<Schema>, Schema>;
+
+// Upload operations
+function uploadFiles<Schema, TQuery>(
+  data: FormData,
+  query?: TQuery
+): RestCommand<DirectusFile<Schema>, Schema>;
+
+function importFile<Schema, TQuery>(
+  url: string,
+  data?: Partial<DirectusFile<Schema>>,
+  query?: TQuery
+): RestCommand<DirectusFile<Schema>, Schema>;
+
+// Update operations
+function updateFile<Schema, TQuery>(
+  key: string,
+  data: Partial<DirectusFile<Schema>>,
+  query?: TQuery
+): RestCommand<DirectusFile<Schema>, Schema>;
+
+// Delete operations
+function deleteFile<Schema>(
+  key: string
+): RestCommand<void, Schema>;
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+
+<Card title="Items Operations" icon="database" href="/api/sdk/items">
+  Link files to collection items
+</Card>
+
+<Card title="Users" icon="users" href="/api/sdk/users">
+  Manage user avatars and files
+</Card>
+
+<Card title="Assets API" icon="image" href="/api/assets">
+  Transform and optimize images
+</Card>
+
+<Card title="Storage" icon="server" href="/api/storage">
+  Configure file storage adapters
+</Card>
+
+</CardGroup>

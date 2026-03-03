@@ -1,0 +1,134 @@
+---
+title: Storage Overview
+description: Learn about Directus storage abstraction and how to configure different storage drivers for file management.
+---
+
+Directus provides a flexible storage abstraction layer that allows you to store and manage files across different storage providers. This abstraction enables you to seamlessly switch between local file systems and cloud storage services without changing your application code.
+
+## Storage Architecture
+
+The storage system consists of:
+
+- **Storage Manager** - Central management interface for registering drivers and locations
+- **Storage Drivers** - Provider-specific implementations (Local, S3, Azure, GCS, Cloudinary, Supabase)
+- **Storage Locations** - Named storage configurations that use a specific driver
+
+## Available Drivers
+
+Directus supports the following storage drivers:
+
+- **[Local](/storage/local)** - Store files on the local file system
+- **[S3](/storage/s3)** - Amazon S3 and S3-compatible storage (DigitalOcean Spaces, MinIO, etc.)
+- **[Azure](/storage/azure)** - Azure Blob Storage
+- **[Google Cloud Storage](/storage/gcs)** - Google Cloud Storage
+- **[Cloudinary](/storage/cloudinary)** - Cloudinary media management platform
+- **[Supabase](/storage/supabase)** - Supabase Storage
+
+## Configuration
+
+Storage is configured using environment variables. You need to:
+
+1. Define which storage locations to use
+2. Configure each location with a driver and options
+
+### Basic Configuration
+
+```bash
+# Define available storage locations
+STORAGE_LOCATIONS="local"
+
+# Configure the local storage driver
+STORAGE_LOCAL_DRIVER="local"
+STORAGE_LOCAL_ROOT="./uploads"
+```
+
+### Multiple Storage Locations
+
+You can configure multiple storage locations:
+
+```bash
+# Define multiple locations
+STORAGE_LOCATIONS="local,s3,cloudinary"
+
+# Configure local storage
+STORAGE_LOCAL_DRIVER="local"
+STORAGE_LOCAL_ROOT="./uploads"
+
+# Configure S3 storage
+STORAGE_S3_DRIVER="s3"
+STORAGE_S3_BUCKET="my-bucket"
+STORAGE_S3_REGION="us-east-1"
+STORAGE_S3_KEY="your-access-key"
+STORAGE_S3_SECRET="your-secret-key"
+
+# Configure Cloudinary storage
+STORAGE_CLOUDINARY_DRIVER="cloudinary"
+STORAGE_CLOUDINARY_CLOUD_NAME="your-cloud-name"
+STORAGE_CLOUDINARY_API_KEY="your-api-key"
+STORAGE_CLOUDINARY_API_SECRET="your-api-secret"
+STORAGE_CLOUDINARY_ACCESS_MODE="public"
+```
+
+## Driver Interface
+
+All storage drivers implement a common interface with the following methods:
+
+### Core Methods
+
+- `read(filepath, options?)` - Read a file as a stream
+- `write(filepath, content, type?)` - Write a file from a stream
+- `delete(filepath)` - Delete a file
+- `stat(filepath)` - Get file metadata (size, modified date)
+- `exists(filepath)` - Check if a file exists
+- `move(src, dest)` - Move a file
+- `copy(src, dest)` - Copy a file
+- `list(prefix?)` - List files with optional prefix filter
+
+### TUS Protocol Support
+
+Some drivers support resumable uploads via the TUS protocol:
+
+- `createChunkedUpload(filepath, context)` - Initialize a chunked upload
+- `writeChunk(filepath, content, offset, context)` - Write a chunk of data
+- `finishChunkedUpload(filepath, context)` - Complete the upload
+- `deleteChunkedUpload(filepath, context)` - Cancel and delete an upload
+
+All drivers currently support TUS resumable uploads.
+
+## Resumable Uploads
+
+Directus supports resumable uploads using the TUS protocol. Configure it globally:
+
+```bash
+# Enable resumable uploads (default: true)
+RESUMABLE_UPLOADS_ENABLED=true
+
+# Set chunk size in bytes (default varies by driver)
+RESUMABLE_UPLOADS_CHUNK_SIZE=5242880
+```
+
+Each driver may have its own minimum chunk size requirements. See the individual driver documentation for details.
+
+## Root Path
+
+Most drivers support a `root` configuration option to prefix all file paths:
+
+```bash
+STORAGE_S3_ROOT="directus/files"
+```
+
+This is useful for:
+- Organizing files in a shared bucket
+- Multi-tenant configurations
+- Separating environments (dev/staging/production)
+
+## Next Steps
+
+Choose a storage driver to learn about its specific configuration:
+
+- [Local Storage](/storage/local)
+- [S3 Storage](/storage/s3)
+- [Azure Storage](/storage/azure)
+- [Google Cloud Storage](/storage/gcs)
+- [Cloudinary Storage](/storage/cloudinary)
+- [Supabase Storage](/storage/supabase)

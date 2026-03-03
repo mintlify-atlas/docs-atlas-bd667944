@@ -1,0 +1,69 @@
+---
+title: Layout Extensions
+description: Create custom ways to view and interact with collection items
+---
+
+Layouts determine how items in a collection are displayed in the admin app.
+
+## Overview
+
+Directus includes 8 built-in layouts:
+- **Table** - Spreadsheet-style rows and columns
+- **Cards** - Card grid with image previews
+- **Calendar** - Calendar view for date-based items
+- **Map** - Geographic visualization
+- **Kanban** - Board with draggable cards
+- **Timeline** - Chronological timeline
+- **List** - Simple list view
+- **Grid** - Masonry grid
+
+## Creating a Layout
+
+```bash
+npm init directus-extension
+# Select "layout" as the extension type
+```
+
+## Layout Structure
+
+```typescript
+import { defineLayout } from '@directus/extensions-sdk';
+
+export default defineLayout({
+  id: 'my-layout',
+  name: 'My Layout',
+  icon: 'view_module',
+  component: LayoutComponent,
+  slots: {
+    options: OptionsComponent,
+    sidebar: SidebarComponent,
+    actions: ActionsComponent,
+  },
+});
+```
+
+## Component Props
+
+The layout component receives:
+
+```typescript
+interface LayoutProps {
+  collection: string;
+  selection: (string | number)[];
+  layoutOptions: Record<string, any>;
+  layoutQuery: Record<string, any>;
+  filters: Filter[];
+  search: string;
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Interfaces" icon="input-text" href="/extensions/interfaces">
+    Create input interfaces
+  </Card>
+  <Card title="Modules" icon="grid" href="/extensions/modules">
+    Create custom modules
+  </Card>
+</CardGroup>

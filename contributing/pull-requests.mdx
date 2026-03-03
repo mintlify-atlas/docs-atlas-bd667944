@@ -1,0 +1,364 @@
+---
+title: Pull Request Guidelines
+description: Guidelines for creating and submitting pull requests to Directus
+---
+
+This guide outlines the process and requirements for submitting pull requests to the Directus project.
+
+## Before You Submit
+
+Before creating a pull request, ensure:
+
+1. You've searched for existing issues and PRs to avoid duplicates
+2. Your development environment is properly set up
+3. You understand the codebase structure
+4. Your changes align with Directus project goals
+
+## Code Quality Requirements
+
+**IMPORTANT**: Before creating a pull request, ensure all linters and formatters pass successfully. This is a mandatory requirement for all PRs.
+
+### Running Quality Checks
+
+Run these commands to verify code quality:
+
+```bash
+pnpm lint         # ESLint - checks JavaScript/TypeScript code
+pnpm lint:style   # Stylelint - checks CSS/SCSS/Vue styles
+pnpm format       # Prettier - checks code formatting
+```
+
+All three commands must pass with no errors before raising a PR.
+
+### Auto-fixing Issues
+
+Many issues can be automatically fixed:
+
+```bash
+# Auto-fix ESLint issues
+pnpm lint --fix
+
+# Auto-fix Stylelint issues
+pnpm lint:style --fix
+
+# Auto-format with Prettier
+prettier --cache --write .
+```
+
+Review and manually fix any remaining issues that cannot be auto-fixed.
+
+## Creating a Changeset
+
+All code changes require a changeset to document what changed for the release notes.
+
+### Generate a Changeset
+
+Run the changeset command:
+
+```bash
+pnpm changeset
+```
+
+This interactive command will:
+
+1. Ask which packages are affected
+2. Ask whether the change is a major, minor, or patch
+3. Prompt for a description of the change
+
+### Changeset Format
+
+**IMPORTANT**: All changeset descriptions must be written in **past tense**.
+
+Examples:
+
+- ✅ "Added support for multi-provider AI"
+- ✅ "Fixed race condition in WebSocket connections"
+- ✅ "Replaced deprecated `ldapjs` with `ldapts`"
+- ❌ "Add support for multi-provider AI" (incorrect)
+- ❌ "Adding support for multi-provider AI" (incorrect)
+
+### Versioning
+
+Follow semantic versioning:
+
+- **Patch** (`0.0.x`) - Bug fixes, dependency updates, internal improvements
+- **Minor** (`0.x.0`) - New features, enhancements, non-breaking changes
+- **Major** (`x.0.0`) - Breaking changes requiring user action
+
+For breaking changes, clearly document:
+- What changed (past tense)
+- Why it changed (if not obvious)
+- Migration steps or what users need to update
+
+## Pull Request Template
+
+When creating a pull request, use the provided template. Replace the placeholder "Lorem ipsum" content with actual details about your changes.
+
+### Template Sections
+
+#### Scope
+
+List what changed in the PR:
+
+```markdown
+## Scope
+
+What's changed:
+
+- Added new authentication provider for OAuth 2.0
+- Updated user interface for login flow
+- Fixed validation error in email field
+```
+
+#### Potential Risks / Drawbacks
+
+Document any risks or trade-offs:
+
+```markdown
+## Potential Risks / Drawbacks
+
+- New authentication flow may affect existing SSO integrations
+- Requires users to update configuration for OAuth providers
+```
+
+#### Tested Scenarios
+
+Describe how the changes were tested:
+
+```markdown
+## Tested Scenarios
+
+- Tested OAuth login with Google and GitHub providers
+- Verified backward compatibility with existing auth methods
+- Ran full test suite with PostgreSQL and MySQL
+- Tested on Node.js 22
+```
+
+#### Review Notes / Questions
+
+Highlight areas needing attention or questions for reviewers:
+
+```markdown
+## Review Notes / Questions
+
+- Please review the security implementation in auth/oauth.ts:45
+- Feedback needed on the UI changes in the login component
+- Should we add rate limiting to the OAuth callback endpoint?
+```
+
+#### Checklist
+
+Confirm the following:
+
+```markdown
+## Checklist
+
+- [x] Added or updated tests
+- [x] Documentation PR created [here](https://github.com/directus/docs) or not required
+- [x] OpenAPI package PR created [here](https://github.com/directus/openapi) or not required
+```
+
+#### Related Issue
+
+Always reference the related issue at the bottom using `Fixes #<num>` format:
+
+```markdown
+---
+
+Fixes #1234
+```
+
+## Testing Requirements
+
+Ensure your changes are thoroughly tested:
+
+### Unit Tests
+
+```bash
+# Run all tests
+pnpm test
+
+# Run tests for specific package
+pnpm --filter @directus/api test
+
+# Watch mode
+cd api && pnpm test:watch
+
+# Coverage report
+pnpm test:coverage
+```
+
+### Blackbox/E2E Tests
+
+For significant changes, run blackbox tests:
+
+```bash
+# Build and run blackbox tests
+pnpm test:blackbox
+
+# Test against specific database
+TEST_DB=postgres pnpm test:blackbox
+```
+
+### Test Coverage
+
+- Add tests for new functionality
+- Update tests for modified functionality
+- Ensure tests pass across all supported databases when applicable
+- Follow existing test patterns and conventions
+
+## Branch Naming
+
+Use descriptive branch names:
+
+- `fix/issue-description` - Bug fixes
+- `feat/feature-description` - New features
+- `refactor/description` - Code refactoring
+- `docs/description` - Documentation changes
+- `test/description` - Test additions or updates
+
+Examples:
+- `fix/websocket-connection-error`
+- `feat/oauth-authentication`
+- `refactor/service-layer-cleanup`
+
+## Commit Messages
+
+Write clear, descriptive commit messages:
+
+- Use present tense ("Add feature" not "Added feature")
+- Be concise but descriptive
+- Reference issue numbers when applicable
+
+Examples:
+```
+Add OAuth 2.0 authentication provider
+
+Fix validation error in email field (#1234)
+
+Refactor user service for better performance
+```
+
+## Handling Change Requests
+
+### For Human Contributors
+
+Push commits directly to your PR branch as usual. Address reviewer feedback by:
+
+1. Making the requested changes
+2. Running quality checks
+3. Pushing new commits to your branch
+4. Responding to review comments
+
+### For AI Agents Only
+
+<Note>
+This section applies only to AI coding agents. Human contributors should follow the process above.
+</Note>
+
+When AI agents are triggered to resolve change requests or feedback on a pull request, they must create a **Sub-PR** (a new pull request that targets the original PR branch) instead of pushing commits directly.
+
+**Why Sub-PRs for AI Agents?**
+
+- Allows reviewers to evaluate AI-generated changes in isolation
+- Maintains clear separation between original work and revisions
+- Enables easier rollback if AI-generated fixes introduce issues
+- Provides an additional review checkpoint for AI changes
+
+## Review Process
+
+After submitting your PR:
+
+1. **Automated checks** - CI/CD runs linting, tests, and builds
+2. **Code review** - Maintainers review your changes
+3. **Feedback** - Address any requested changes
+4. **Approval** - Once approved, your PR will be merged
+
+### What Reviewers Look For
+
+- Code quality and adherence to style guidelines
+- Comprehensive test coverage
+- Clear and accurate changeset
+- Proper documentation (if applicable)
+- No breaking changes without proper justification
+- Performance implications
+- Security considerations
+
+## Common Issues
+
+### Merge Conflicts
+
+If your PR has merge conflicts:
+
+```bash
+# Update your local main branch
+git checkout main
+git pull upstream main
+
+# Rebase your branch
+git checkout your-branch
+git rebase main
+
+# Resolve conflicts and continue
+git add .
+git rebase --continue
+
+# Force push to your fork
+git push --force-with-lease
+```
+
+### Failed CI Checks
+
+If CI checks fail:
+
+1. Review the error logs in the GitHub Actions tab
+2. Fix the issues locally
+3. Run the checks locally before pushing:
+   ```bash
+   pnpm lint
+   pnpm lint:style
+   pnpm format
+   pnpm test
+   ```
+4. Push your fixes
+
+### Missing Changeset
+
+If you forgot to add a changeset:
+
+```bash
+pnpm changeset
+git add .changeset/
+git commit -m "Add changeset"
+git push
+```
+
+## Documentation and OpenAPI
+
+For changes that affect:
+
+- **User-facing features** - Create a documentation PR at [directus/docs](https://github.com/directus/docs)
+- **API endpoints** - Create an OpenAPI package PR at [directus/openapi](https://github.com/directus/openapi)
+
+Check these boxes in the PR template and link to the related PRs.
+
+## Tips for Success
+
+1. **Start small** - Begin with smaller contributions to get familiar with the process
+2. **Ask questions** - Don't hesitate to ask for clarification in discussions
+3. **Be patient** - Reviews may take time, especially for large changes
+4. **Stay responsive** - Respond promptly to review feedback
+5. **Follow conventions** - Adhere to existing code patterns and styles
+6. **Test thoroughly** - Ensure your changes work across different scenarios
+7. **Update documentation** - Keep docs in sync with code changes
+
+## Getting Help
+
+If you need assistance:
+
+- Comment on the related issue
+- Ask in [GitHub Discussions](https://github.com/directus/directus/discussions)
+- Join the [Directus Discord](https://directus.chat)
+- Review existing PRs for examples
+
+Thank you for contributing to Directus! Your efforts help make the project better for everyone.

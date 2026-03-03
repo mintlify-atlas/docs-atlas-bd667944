@@ -1,0 +1,372 @@
+---
+title: Authentication
+description: Secure your Directus project with multiple authentication methods including local, OAuth 2.0, OpenID, LDAP, and SAML.
+---
+
+Directus provides flexible authentication options to integrate with your existing identity infrastructure or use built-in user management.
+
+## Authentication Methods
+
+Directus supports multiple authentication drivers that can be used individually or in combination:
+
+- **Local** - Email and password authentication
+- **OAuth 2.0** - Generic OAuth 2.0 provider integration
+- **OpenID** - OpenID Connect authentication
+- **LDAP** - Active Directory and LDAP integration
+- **SAML** - SAML 2.0 single sign-on
+
+## Local Authentication
+
+The default authentication method using email and password stored in Directus.
+
+### Configuration
+
+```bash
+AUTH_PROVIDERS="local"
+```
+
+### Login Flow
+
+```typescript
+import { createDirectus, authentication } from '@directus/sdk';
+
+const client = createDirectus('https://your-project.directus.app')
+  .with(authentication('json'));
+
+// Login with credentials
+await client.login('user@example.com', 'password');
+
+// Access token is now stored and used automatically
+const user = await client.request(readMe());
+```
+
+### Password Hashing
+
+Passwords are hashed using Argon2, a secure password hashing algorithm:
+
+```typescript
+import argon2 from 'argon2';
+
+// During user creation/password change
+const hashedPassword = await argon2.hash(plainTextPassword);
+
+// During authentication
+const isValid = await argon2.verify(user.password, providedPassword);
+```
+
+### Authentication Modes
+
+Directus supports three authentication modes:
+
+#### JSON Mode (Default)
+
+Tokens returned in JSON response:
+
+```typescript
+const response = await fetch('https://your-project.directus.app/auth/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    email: 'user@example.com',
+    password: 'password',
+    mode: 'json'
+  })
+});
+
+const { access_token, refresh_token, expires } = await response.json();
+```
+
+#### Cookie Mode
+
+Tokens stored in HTTP-only cookies:
+
+```typescript
+await fetch('https://your-project.directus.app/auth/login', {
+  method: 'POST',
+  credentials: 'include',
+  body: JSON.stringify({ email, password, mode: 'cookie' })
+});
+```
+
+#### Session Mode
+
+Long-lived session in cookie:
+
+```typescript
+await fetch('https://your-project.directus.app/auth/login', {
+  method: 'POST',
+  credentials: 'include',
+  body: JSON.stringify({ email, password, mode: 'session' })
+});
+```
+
+## OAuth 2.0
+
+Integrate with any OAuth 2.0 provider (Google, GitHub, Facebook, etc.).
+
+### Configuration
+
+```bash
+AUTH_PROVIDERS="google"
+
+# OAuth Configuration
+AUTH_GOOGLE_DRIVER="oauth2"
+AUTH_GOOGLE_CLIENT_ID="your-client-id"
+AUTH_GOOGLE_CLIENT_SECRET="your-client-secret"
+AUTH_GOOGLE_AUTHORIZE_URL="https://accounts.google.com/o/oauth2/v2/auth"
+AUTH_GOOGLE_ACCESS_URL="https://oauth2.googleapis.com/token"
+AUTH_GOOGLE_PROFILE_URL="https://www.googleapis.com/oauth2/v2/userinfo"
+
+# Optional: Auto-create users
+AUTH_GOOGLE_ALLOW_PUBLIC_REGISTRATION="true"
+AUTH_GOOGLE_DEFAULT_ROLE_ID="role-uuid"
+
+# Optional: Sync user info on login
+AUTH_GOOGLE_SYNC_USER_INFO="true"
+
+# Optional: Role mapping based on groups
+AUTH_GOOGLE_ROLE_MAPPING='json:{"admin-group":"admin-role-uuid"}'
+```
+
+### OAuth Login Flow
+
+```typescript
+// Redirect user to OAuth provider
+window.location.href = 'https://your-project.directus.app/auth/login/google';
+
+// After callback, user is authenticated
+// Tokens are available via cookie or redirected with token
+```
+
+### User Mapping
+
+Map OAuth profile fields to Directus user fields:
+
+```bash
+AUTH_GOOGLE_IDENTIFIER_KEY="email"
+AUTH_GOOGLE_EMAIL_KEY="email"
+AUTH_GOOGLE_FIRST_NAME_KEY="given_name"
+AUTH_GOOGLE_LAST_NAME_KEY="family_name"
+```
+
+## OpenID Connect
+
+Modern authentication protocol built on OAuth 2.0.
+
+### Configuration
+
+```bash
+AUTH_PROVIDERS="keycloak"
+
+AUTH_KEYCLOAK_DRIVER="openid"
+AUTH_KEYCLOAK_CLIENT_ID="directus"
+AUTH_KEYCLOAK_CLIENT_SECRET="client-secret"
+AUTH_KEYCLOAK_ISSUER_URL="https://keycloak.example.com/realms/master"
+AUTH_KEYCLOAK_SCOPE="openid profile email"
+AUTH_KEYCLOAK_ALLOW_PUBLIC_REGISTRATION="true"
+AUTH_KEYCLOAK_DEFAULT_ROLE_ID="role-uuid"
+```
+
+### Token Refresh
+
+OpenID tokens are automatically refreshed:
+
+```typescript
+// Refresh token stored in user's auth_data
+// Automatically used to get new access token when needed
+await client.refresh();
+```
+
+## LDAP Authentication
+
+Integrate with Active Directory or LDAP servers.
+
+### Configuration
+
+```bash
+AUTH_PROVIDERS="ldap"
+
+AUTH_LDAP_DRIVER="ldap"
+AUTH_LDAP_CLIENT_URL="ldap://ldap.example.com:389"
+AUTH_LDAP_BIND_DN="cn=admin,dc=example,dc=com"
+AUTH_LDAP_BIND_PASSWORD="admin-password"
+AUTH_LDAP_USER_DN="ou=users,dc=example,dc=com"
+AUTH_LDAP_USER_ATTRIBUTE="cn"
+AUTH_LDAP_USER_SCOPE="one"
+
+# Optional: Group mapping
+AUTH_LDAP_GROUP_DN="ou=groups,dc=example,dc=com"
+AUTH_LDAP_GROUP_ATTRIBUTE="member"
+AUTH_LDAP_GROUP_SCOPE="one"
+
+# Optional: Attribute mapping
+AUTH_LDAP_MAIL_ATTRIBUTE="mail"
+AUTH_LDAP_FIRST_NAME_ATTRIBUTE="givenName"
+AUTH_LDAP_LAST_NAME_ATTRIBUTE="sn"
+
+# Default role for LDAP users
+AUTH_LDAP_DEFAULT_ROLE_ID="role-uuid"
+```
+
+### LDAP Login
+
+```typescript
+await fetch('https://your-project.directus.app/auth/login/ldap', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    identifier: 'username', // cn or uid
+    password: 'password'
+  })
+});
+```
+
+### Group-based Roles
+
+Map LDAP groups to Directus roles:
+
+1. Create role in Directus with matching name
+2. LDAP users in that group automatically get the role
+3. Roles sync on each login
+
+## SAML 2.0
+
+Enterprise single sign-on via SAML.
+
+### Configuration
+
+```bash
+AUTH_PROVIDERS="saml"
+
+AUTH_SAML_DRIVER="saml"
+AUTH_SAML_SP_ENTITY_ID="https://your-project.directus.app/saml/metadata"
+AUTH_SAML_SP_ACS_URL="https://your-project.directus.app/auth/login/saml/acs"
+AUTH_SAML_SP_CERTIFICATE="/path/to/sp-cert.pem"
+AUTH_SAML_SP_PRIVATE_KEY="/path/to/sp-key.pem"
+
+AUTH_SAML_IDP_ENTITY_ID="https://idp.example.com/metadata"
+AUTH_SAML_IDP_SSO_URL="https://idp.example.com/sso"
+AUTH_SAML_IDP_CERTIFICATE="/path/to/idp-cert.pem"
+
+# Attribute mapping
+AUTH_SAML_IDENTIFIER_KEY="uid"
+AUTH_SAML_EMAIL_KEY="email"
+AUTH_SAML_FIRST_NAME_KEY="firstName"
+AUTH_SAML_LAST_NAME_KEY="lastName"
+
+AUTH_SAML_ALLOW_PUBLIC_REGISTRATION="true"
+AUTH_SAML_DEFAULT_ROLE_ID="role-uuid"
+```
+
+## Token Management
+
+### Access Tokens
+
+Short-lived JWT tokens (default 15 minutes):
+
+```bash
+ACCESS_TOKEN_TTL="15m"
+```
+
+### Refresh Tokens
+
+Long-lived tokens to get new access tokens (default 7 days):
+
+```bash
+REFRESH_TOKEN_TTL="7d"
+REFRESH_TOKEN_COOKIE_SECURE="true"
+REFRESH_TOKEN_COOKIE_SAME_SITE="lax"
+```
+
+### Token Refresh
+
+```typescript
+// Manually refresh tokens
+const { access_token, refresh_token } = await client.request(
+  refresh('json', refresh_token)
+);
+
+// SDK handles refresh automatically
+await client.refresh();
+```
+
+## Two-Factor Authentication
+
+Enable TOTP-based 2FA for users:
+
+```typescript
+// Generate TFA secret
+const { secret, url } = await client.request(generateTFA());
+
+// Enable TFA with TOTP code
+await client.request(enableTFA(otp));
+
+// Login with TFA
+await client.login('user@example.com', 'password', { otp: '123456' });
+```
+
+## Session Management
+
+### Login Stall Time
+
+Prevent timing attacks:
+
+```bash
+LOGIN_STALL_TIME=500 # milliseconds
+```
+
+### Session Security
+
+```bash
+SESSION_COOKIE_SECURE="true"
+SESSION_COOKIE_SAME_SITE="lax"
+SESSION_COOKIE_NAME="directus_session"
+```
+
+## SSO Events
+
+Hook into authentication events:
+
+```typescript
+import { defineHook } from '@directus/extensions-sdk';
+
+export default defineHook(({ filter }) => {
+  // Augment user data on SSO registration
+  filter('auth.create', async (user, { provider }) => {
+    if (provider === 'google') {
+      user.department = 'Engineering';
+    }
+    return user;
+  });
+
+  // Update user data on login
+  filter('auth.update', async (updates, { provider }) => {
+    // Sync additional fields from provider
+    return updates;
+  });
+});
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Environment Variables for Secrets">
+    Never commit OAuth secrets, LDAP passwords, or API keys. Use environment variables.
+  </Accordion>
+  
+  <Accordion title="Enable Two-Factor Authentication">
+    Require 2FA for admin users to prevent unauthorized access.
+  </Accordion>
+  
+  <Accordion title="Use HTTPS in Production">
+    Always use HTTPS for OAuth callbacks and cookie-based authentication.
+  </Accordion>
+  
+  <Accordion title="Implement Role Mapping">
+    Use group-based role mapping with SSO to automate access control.
+  </Accordion>
+  
+  <Accordion title="Monitor Failed Login Attempts">
+    Track failed logins in the activity log and implement rate limiting.
+  </Accordion>
+</AccordionGroup>

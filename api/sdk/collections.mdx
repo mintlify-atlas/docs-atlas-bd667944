@@ -1,0 +1,346 @@
+---
+title: "SDK Collections Operations"
+description: "Manage and retrieve collection metadata in Directus"
+---
+
+## Overview
+
+Collections represent tables in your database. The SDK provides methods to retrieve collection metadata, including information about fields, relationships, and collection settings.
+
+## Read Operations
+
+### Read All Collections
+
+Retrieve a list of all available collections:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { createDirectus, rest, readCollections } from '@directus/sdk';
+
+const client = createDirectus<Schema>('https://your-directus-url.com')
+  .with(rest());
+
+const collections = await client.request(
+  readCollections()
+);
+
+collections.forEach(collection => {
+  console.log(collection.collection); // Collection name
+  console.log(collection.meta?.singleton); // Is singleton?
+  console.log(collection.schema); // Database schema info
+});
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { createDirectus, rest, readCollections } from '@directus/sdk';
+
+const client = createDirectus('https://your-directus-url.com')
+  .with(rest());
+
+const collections = await client.request(
+  readCollections()
+);
+
+collections.forEach(collection => {
+  console.log(collection.collection);
+});
+```
+  </Tab>
+</Tabs>
+
+### Read Single Collection
+
+Retrieve metadata for a specific collection:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { readCollection } from '@directus/sdk';
+
+const collection = await client.request(
+  readCollection('articles')
+);
+
+console.log(collection.collection); // "articles"
+console.log(collection.meta?.note); // Collection note/description
+console.log(collection.meta?.icon); // Collection icon
+console.log(collection.meta?.display_template); // Display template
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { readCollection } from '@directus/sdk';
+
+const collection = await client.request(
+  readCollection('articles')
+);
+
+console.log(collection.meta?.icon);
+```
+  </Tab>
+</Tabs>
+
+## Collection Properties
+
+The collection object contains the following key properties:
+
+### Collection Name
+
+The unique identifier for the collection:
+
+```typescript
+collection.collection // "articles"
+```
+
+### Meta Information
+
+Collection metadata managed by Directus:
+
+```typescript
+collection.meta = {
+  collection: 'articles',
+  icon: 'article',
+  note: 'Blog articles and posts',
+  display_template: '{{title}}',
+  hidden: false,
+  singleton: false,
+  translations: [...],
+  archive_field: 'status',
+  archive_value: 'archived',
+  unarchive_value: 'draft',
+  sort_field: 'sort',
+  accountability: 'all',
+  color: null,
+  item_duplication_fields: null,
+  sort: 1,
+  group: null,
+  collapse: 'open',
+}
+```
+
+### Schema Information
+
+Database-level schema information:
+
+```typescript
+collection.schema = {
+  name: 'articles',
+  comment: null,
+}
+```
+
+## Working with System Collections
+
+Directus includes several built-in system collections:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { readCollection } from '@directus/sdk';
+
+// Read users collection
+const usersCollection = await client.request(
+  readCollection('directus_users')
+);
+
+// Read files collection
+const filesCollection = await client.request(
+  readCollection('directus_files')
+);
+
+// Read roles collection
+const rolesCollection = await client.request(
+  readCollection('directus_roles')
+);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { readCollection } from '@directus/sdk';
+
+const usersCollection = await client.request(
+  readCollection('directus_users')
+);
+```
+  </Tab>
+</Tabs>
+
+### Common System Collections
+
+- `directus_users` - User accounts
+- `directus_files` - Uploaded files
+- `directus_folders` - File organization folders
+- `directus_roles` - User roles
+- `directus_permissions` - Access permissions
+- `directus_activity` - Activity logs
+- `directus_settings` - Global settings
+- `directus_flows` - Automation flows
+- `directus_operations` - Flow operations
+
+## Filtering Collections
+
+You can filter the collections list programmatically after retrieval:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+const collections = await client.request(
+  readCollections()
+);
+
+// Get only user-created collections (non-system)
+const userCollections = collections.filter(
+  collection => !collection.collection.startsWith('directus_')
+);
+
+// Get only singleton collections
+const singletons = collections.filter(
+  collection => collection.meta?.singleton === true
+);
+
+// Get only visible collections
+const visibleCollections = collections.filter(
+  collection => collection.meta?.hidden !== true
+);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+const collections = await client.request(
+  readCollections()
+);
+
+const userCollections = collections.filter(
+  collection => !collection.collection.startsWith('directus_')
+);
+```
+  </Tab>
+</Tabs>
+
+## Use Cases
+
+### Building Dynamic Forms
+
+Use collection metadata to build dynamic forms:
+
+```typescript
+const collection = await client.request(
+  readCollection('articles')
+);
+
+const displayName = collection.meta?.translations?.find(
+  t => t.language === 'en-US'
+)?.translation || collection.collection;
+
+console.log(`Creating form for: ${displayName}`);
+```
+
+### Collection Discovery
+
+Discover available collections for your application:
+
+```typescript
+const collections = await client.request(
+  readCollections()
+);
+
+const availableCollections = collections
+  .filter(c => !c.meta?.hidden)
+  .map(c => ({
+    name: c.collection,
+    icon: c.meta?.icon || 'box',
+    singleton: c.meta?.singleton || false,
+  }));
+
+console.log('Available collections:', availableCollections);
+```
+
+### Check if Collection Exists
+
+```typescript
+try {
+  const collection = await client.request(
+    readCollection('my_collection')
+  );
+  console.log('Collection exists');
+} catch (error) {
+  console.log('Collection does not exist');
+}
+```
+
+## Type Signatures
+
+```typescript
+// DirectusCollection interface
+interface DirectusCollection<Schema> {
+  collection: string;
+  meta: {
+    collection: string;
+    icon: string | null;
+    note: string | null;
+    display_template: string | null;
+    hidden: boolean;
+    singleton: boolean;
+    translations: any[];
+    archive_field: string | null;
+    archive_value: string | null;
+    unarchive_value: string | null;
+    sort_field: string | null;
+    accountability: string | null;
+    color: string | null;
+    item_duplication_fields: any | null;
+    sort: number | null;
+    group: string | null;
+    collapse: string;
+  } | null;
+  schema: {
+    name: string;
+    comment: string | null;
+  } | null;
+}
+
+// Read all collections
+function readCollections<Schema>(): RestCommand<
+  DirectusCollection<Schema>[],
+  Schema
+>;
+
+// Read single collection
+function readCollection<Schema>(
+  collection: string
+): RestCommand<DirectusCollection<Schema>, Schema>;
+```
+
+## Notes
+
+<Note>
+Collection metadata is read-only via the SDK. To create or modify collections, use the Directus Admin App or the Collections REST API endpoints directly.
+</Note>
+
+<Warning>
+System collections (prefixed with `directus_`) have special behavior and permissions. Always check permissions before accessing system collections.
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+
+<Card title="Items Operations" icon="database" href="/api/sdk/items">
+  Work with items in your collections
+</Card>
+
+<Card title="Fields" icon="input-text" href="/api/sdk/fields">
+  Retrieve field metadata and schema
+</Card>
+
+<Card title="Relations" icon="diagram-project" href="/api/sdk/relations">
+  Work with relationships between collections
+</Card>
+
+<Card title="Users" icon="users" href="/api/sdk/users">
+  Manage users and permissions
+</Card>
+
+</CardGroup>

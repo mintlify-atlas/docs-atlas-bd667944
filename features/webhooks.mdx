@@ -1,0 +1,519 @@
+---
+title: Webhooks
+description: Create HTTP endpoints and trigger workflows with Directus webhooks using the Flows system.
+---
+
+Directus webhooks allow you to create HTTP endpoints that trigger workflows, enabling integration with external systems and automation of tasks via HTTP requests.
+
+## Overview
+
+Webhooks in Directus are implemented through the **Flows** system using webhook triggers. This provides a powerful way to create custom API endpoints that execute automated workflows.
+
+<Info>
+Webhooks in Directus are part of the Flows automation system. For more details on flows, see [Flows & Automation](/features/flows-automation).
+</Info>
+
+## Creating Webhook Flows
+
+A webhook flow consists of a trigger and operations:
+
+```javascript
+{
+  name: 'Process Incoming Data',
+  trigger: 'webhook',
+  status: 'active',
+  options: {
+    method: 'POST',
+    async: false,
+    return: '$last'
+  },
+  operations: [
+    // Operations to execute
+  ]
+}
+```
+
+## Webhook Trigger Options
+
+### HTTP Method
+
+Specify which HTTP method triggers the flow:
+
+```javascript
+{
+  trigger: 'webhook',
+  options: {
+    method: 'POST' // GET, POST, PUT, PATCH, DELETE
+  }
+}
+```
+
+### Async Execution
+
+Control whether the webhook waits for completion:
+
+```javascript
+{
+  options: {
+    async: false // Wait for operations to complete
+  }
+}
+```
+
+- **async: false** - HTTP request waits for flow completion, returns result
+- **async: true** - Returns immediately, flow executes in background
+
+### Return Value
+
+Specify what data to return in the HTTP response:
+
+```javascript
+{
+  options: {
+    return: '$last' // Return result of last operation
+    // Can also be: '$trigger', specific operation ID, or custom value
+  }
+}
+```
+
+## Webhook URL
+
+Once created, webhook flows are accessible at:
+
+```
+POST https://your-project.directus.app/flows/trigger/{flow-id}
+```
+
+The flow ID is a UUID automatically assigned when the flow is created.
+
+## Accessing Webhook Data
+
+Webhook payload is available in operations via `$trigger`:
+
+```javascript
+{
+  operation: 'item-create',
+  options: {
+    collection: 'orders',
+    payload: {
+      customer_id: '{{$trigger.customer_id}}',
+      items: '{{$trigger.items}}',
+      total: '{{$trigger.total}}',
+      received_at: '{{$NOW}}'
+    }
+  }
+}
+```
+
+### Webhook Context
+
+Additional context available:
+
+- `{{$trigger.body}}` - Request body (JSON)
+- `{{$trigger.query}}` - Query parameters
+- `{{$trigger.headers}}` - HTTP headers
+- `{{$accountability.user}}` - Authenticated user (if token provided)
+- `{{$accountability.role}}` - User's role
+- `{{$accountability.ip}}` - Request IP address
+
+## Authentication
+
+Webhooks can be authenticated using access tokens:
+
+```bash
+curl -X POST https://your-project.directus.app/flows/trigger/{flow-id} \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"data": "value"}'
+```
+
+### Public Webhooks
+
+To create a public webhook (no authentication required):
+
+1. Create the flow with webhook trigger
+2. Set permissions for the Public role
+3. Allow access to the flow
+
+<Warning>
+Public webhooks should validate input carefully and implement rate limiting to prevent abuse.
+</Warning>
+
+## Example Workflows
+
+### Simple Data Ingestion
+
+Receive data from external service:
+
+```javascript
+{
+  trigger: 'webhook',
+  options: {
+    method: 'POST',
+    async: false,
+    return: '$last'
+  },
+  operations: [
+    {
+      operation: 'item-create',
+      options: {
+        collection: 'events',
+        payload: {
+          type: '{{$trigger.type}}',
+          data: '{{$trigger.data}}',
+          source_ip: '{{$accountability.ip}}',
+          timestamp: '{{$NOW}}'
+        },
+        permissions: '$full'
+      }
+    }
+  ]
+}
+```
+
+Call the webhook:
+```bash
+curl -X POST https://your-project.directus.app/flows/trigger/abc-123 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "purchase",
+    "data": {
+      "product_id": "prod_123",
+      "amount": 99.99
+    }
+  }'
+```
+
+### Conditional Processing
+
+Process different data types:
+
+```javascript
+{
+  trigger: 'webhook',
+  options: { method: 'POST', async: false },
+  operations: [
+    {
+      id: 'check-type',
+      operation: 'condition',
+      options: {
+        filter: {
+          type: { _eq: 'order' }
+        }
+      },
+      resolve: 'process-order',
+      reject: 'process-event'
+    },
+    {
+      id: 'process-order',
+      operation: 'item-create',
+      options: {
+        collection: 'orders',
+        payload: '{{$trigger}}'
+      }
+    },
+    {
+      id: 'process-event',
+      operation: 'item-create',
+      options: {
+        collection: 'events',
+        payload: '{{$trigger}}'
+      }
+    }
+  ]
+}
+```
+
+### External API Integration
+
+Receive webhook, process, and call external API:
+
+```javascript
+{
+  trigger: 'webhook',
+  options: { method: 'POST', async: true }, // Async for long operations
+  operations: [
+    {
+      id: 'save-webhook',
+      operation: 'item-create',
+      options: {
+        collection: 'webhook_logs',
+        payload: {
+          data: '{{$trigger}}',
+          received_at: '{{$NOW}}'
+        }
+      }
+    },
+    {
+      id: 'call-api',
+      operation: 'request',
+      options: {
+        method: 'POST',
+        url: 'https://api.example.com/process',
+        headers: {
+          'Authorization': 'Bearer {{$env.API_TOKEN}}',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          webhook_id: '{{$last.id}}',
+          data: '{{$trigger.data}}'
+        })
+      }
+    },
+    {
+      id: 'update-status',
+      operation: 'item-update',
+      options: {
+        collection: 'webhook_logs',
+        key: '{{$last.id}}',
+        payload: {
+          status: 'processed',
+          result: '{{$last}}'
+        }
+      }
+    }
+  ]
+}
+```
+
+### Validation and Error Handling
+
+Validate input and handle errors:
+
+```javascript
+{
+  trigger: 'webhook',
+  options: { method: 'POST', async: false },
+  operations: [
+    {
+      id: 'validate',
+      operation: 'condition',
+      options: {
+        filter: {
+          _and: [
+            { email: { _nempty: true } },
+            { email: { _contains: '@' } },
+            { name: { _nempty: true } }
+          ]
+        }
+      },
+      resolve: 'process',
+      reject: 'error'
+    },
+    {
+      id: 'process',
+      operation: 'item-create',
+      options: {
+        collection: 'subscribers',
+        payload: '{{$trigger}}'
+      },
+      resolve: 'success'
+    },
+    {
+      id: 'success',
+      operation: 'transform',
+      options: {
+        json: {
+          success: true,
+          message: 'Subscriber created',
+          id: '{{$last.id}}'
+        }
+      }
+    },
+    {
+      id: 'error',
+      operation: 'transform',
+      options: {
+        json: {
+          success: false,
+          message: 'Invalid input: email and name are required'
+        }
+      }
+    }
+  ]
+}
+```
+
+## GET Webhooks with Caching
+
+For GET webhooks, enable caching:
+
+```javascript
+{
+  trigger: 'webhook',
+  options: {
+    method: 'GET',
+    async: false,
+    cacheEnabled: true // Cache GET responses
+  },
+  operations: [
+    {
+      operation: 'item-read',
+      options: {
+        collection: 'products',
+        query: {
+          filter: { status: { _eq: 'active' } },
+          fields: ['id', 'name', 'price'],
+          limit: 100
+        }
+      }
+    }
+  ]
+}
+```
+
+## Response Format
+
+### Successful Response
+
+```json
+{
+  "data": {
+    // Result from specified return operation
+  }
+}
+```
+
+### Error Response
+
+```json
+{
+  "errors": [
+    {
+      "message": "Error description",
+      "extensions": {
+        "code": "ERROR_CODE"
+      }
+    }
+  ]
+}
+```
+
+## Query Parameters
+
+Access query parameters in operations:
+
+```
+GET /flows/trigger/{flow-id}?status=active&limit=10
+```
+
+```javascript
+{
+  operation: 'item-read',
+  options: {
+    collection: 'articles',
+    query: {
+      filter: { status: { _eq: '{{$trigger.query.status}}' } },
+      limit: '{{$trigger.query.limit}}'
+    }
+  }
+}
+```
+
+## Headers
+
+Access request headers:
+
+```javascript
+{
+  operation: 'condition',
+  options: {
+    filter: {
+      'x-api-key': { _eq: '{{$env.WEBHOOK_SECRET}}' }
+    }
+  },
+  resolve: 'process',
+  reject: 'unauthorized'
+}
+```
+
+## Rate Limiting
+
+Implement rate limiting for webhooks:
+
+```javascript
+{
+  operations: [
+    {
+      operation: 'item-read',
+      options: {
+        collection: 'webhook_calls',
+        query: {
+          filter: {
+            ip: { _eq: '{{$accountability.ip}}' },
+            timestamp: { _gte: '$NOW(-1 hour)' }
+          },
+          aggregate: { count: '*' }
+        }
+      }
+    },
+    {
+      operation: 'condition',
+      options: {
+        filter: { count: { _lte: 100 } } // Max 100 per hour
+      },
+      resolve: 'process',
+      reject: 'rate-limited'
+    }
+  ]
+}
+```
+
+## Webhook Logs
+
+Log all webhook calls for debugging:
+
+```javascript
+{
+  operations: [
+    {
+      operation: 'item-create',
+      options: {
+        collection: 'webhook_logs',
+        payload: {
+          flow_id: '{{$flow.id}}',
+          body: '{{$trigger}}',
+          headers: '{{$trigger.headers}}',
+          ip: '{{$accountability.ip}}',
+          timestamp: '{{$NOW}}'
+        }
+      }
+    },
+    // ... rest of operations
+  ]
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Validate Input">
+    Always validate webhook input using condition operations before processing data.
+  </Accordion>
+  
+  <Accordion title="Use Async for Long Operations">
+    Set `async: true` for webhooks that trigger long-running operations to avoid timeouts.
+  </Accordion>
+  
+  <Accordion title="Implement Authentication">
+    Use Bearer tokens or API keys to secure webhooks. Don't rely on obscurity alone.
+  </Accordion>
+  
+  <Accordion title="Log Webhook Calls">
+    Keep logs of webhook calls for debugging and audit purposes.
+  </Accordion>
+  
+  <Accordion title="Handle Errors Gracefully">
+    Use condition operations to detect errors and return appropriate error messages.
+  </Accordion>
+  
+  <Accordion title="Rate Limit Public Webhooks">
+    Implement rate limiting to prevent abuse of public webhook endpoints.
+  </Accordion>
+</AccordionGroup>
+
+## Related Resources
+
+- [Flows & Automation](/features/flows-automation)
+- [Authentication](/features/authentication)
+- [API Reference](/api)

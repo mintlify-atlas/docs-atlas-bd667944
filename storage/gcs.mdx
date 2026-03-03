@@ -1,0 +1,344 @@
+---
+title: Google Cloud Storage
+description: Configure Google Cloud Storage in Directus for scalable and reliable cloud file storage.
+---
+
+The Google Cloud Storage (GCS) driver integrates with Google's object storage service, providing highly available, durable storage with global edge caching and strong consistency.
+
+## Installation
+
+The GCS driver is included by default with Directus via the `@directus/storage-driver-gcs` package, which uses the official Google Cloud Storage SDK.
+
+## Configuration
+
+Configure GCS storage using environment variables:
+
+```bash
+# Define storage location
+STORAGE_LOCATIONS="gcs"
+
+# Configure GCS driver
+STORAGE_GCS_DRIVER="gcs"
+STORAGE_GCS_BUCKET="my-directus-bucket"
+```
+
+### Configuration Options
+
+<ParamField path="bucket" type="string" required>
+  The GCS bucket name where files will be stored.
+</ParamField>
+
+<ParamField path="root" type="string">
+  Optional path prefix for all files within the bucket.
+</ParamField>
+
+<ParamField path="apiEndpoint" type="string">
+  Custom API endpoint URL for testing or alternate GCS endpoints.
+</ParamField>
+
+<ParamField path="tus.enabled" type="boolean">
+  Enable TUS resumable uploads. Default: `false`.
+</ParamField>
+
+<ParamField path="tus.chunkSize" type="number">
+  Chunk size for resumable uploads in bytes. Must be a power of 2 starting at 256 KiB. Minimum: `262144` (256 KiB). Default: `262144`.
+</ParamField>
+
+## Authentication
+
+The GCS driver uses Google Cloud's default authentication mechanisms:
+
+1. **Application Default Credentials (ADC)** - Recommended for production
+2. **Service Account Key File** - Set `GOOGLE_APPLICATION_CREDENTIALS` environment variable
+3. **Workload Identity** - For Google Kubernetes Engine
+4. **Compute Engine Service Account** - Automatic on GCP compute instances
+
+### Service Account Authentication
+
+```bash
+# Set path to service account key file
+export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account-key.json"
+
+# Configure GCS
+STORAGE_LOCATIONS="gcs"
+STORAGE_GCS_DRIVER="gcs"
+STORAGE_GCS_BUCKET="my-bucket"
+```
+
+## Examples
+
+### Basic Configuration
+
+```bash
+STORAGE_LOCATIONS="gcs"
+STORAGE_GCS_DRIVER="gcs"
+STORAGE_GCS_BUCKET="directus-production-files"
+```
+
+### With Root Path
+
+```bash
+STORAGE_LOCATIONS="gcs"
+STORAGE_GCS_DRIVER="gcs"
+STORAGE_GCS_BUCKET="shared-bucket"
+STORAGE_GCS_ROOT="directus/files"
+```
+
+### With Service Account
+
+```bash
+export GOOGLE_APPLICATION_CREDENTIALS="/app/config/gcs-key.json"
+
+STORAGE_LOCATIONS="gcs"
+STORAGE_GCS_DRIVER="gcs"
+STORAGE_GCS_BUCKET="my-bucket"
+```
+
+### With Resumable Uploads
+
+```bash
+STORAGE_LOCATIONS="gcs"
+STORAGE_GCS_DRIVER="gcs"
+STORAGE_GCS_BUCKET="my-bucket"
+STORAGE_GCS_TUS__ENABLED="true"
+STORAGE_GCS_TUS__CHUNK_SIZE="524288"  # 512 KiB (must be power of 2)
+```
+
+### Custom Endpoint (Testing)
+
+```bash
+# For GCS emulator or testing
+STORAGE_LOCATIONS="gcs"
+STORAGE_GCS_DRIVER="gcs"
+STORAGE_GCS_BUCKET="test-bucket"
+STORAGE_GCS_API_ENDPOINT="http://localhost:4443"
+```
+
+## Features
+
+### Resumable Uploads
+
+The GCS driver supports TUS resumable uploads using GCS resumable upload protocol from `/packages/storage-driver-gcs/src/index.ts:23-163`:
+- Creates resumable upload session with unique URI
+- Supports chunk-based uploads with CRC32C validation
+- Resume from any offset after interruption
+- Automatic hash verification
+
+### Chunk Size Requirements
+
+From `/packages/storage-driver-gcs/src/index.ts:11,40-46`:
+- Minimum chunk size: 256 KiB (262144 bytes)
+- Must be a power of 2 (256 KiB, 512 KiB, 1 MiB, 2 MiB, etc.)
+- Invalid chunk size throws configuration error
+- Default: 256 KiB
+
+### Strong Consistency
+
+GCS provides strong read-after-write consistency:
+- Files are immediately readable after upload
+- No eventual consistency delays
+- Reliable for real-time applications
+
+### Server-Side Operations
+
+Native GCS operations from `/packages/storage-driver-gcs/src/index.ts:87-92`:
+- Move and copy without data transfer
+- Metadata operations
+- Efficient list operations with pagination
+
+## Implementation Details
+
+The GCS driver (`DriverGCS` class) from `/packages/storage-driver-gcs/src/index.ts:23-163`:
+
+- Uses Google Cloud Storage SDK `@google-cloud/storage`
+- Implements resumable uploads with session management
+- CRC32C checksum validation for data integrity
+- Non-resumable writes for standard uploads
+- Paginated listing with 500 items per page
+
+## Best Practices
+
+### Service Account Setup
+
+Create a service account with minimal permissions:
+
+```bash
+# Create service account
+gcloud iam service-accounts create directus-storage \
+  --display-name "Directus Storage Access"
+
+# Grant storage permissions
+gcloud projects add-iam-policy-binding PROJECT_ID \
+  --member "serviceAccount:directus-storage@PROJECT_ID.iam.gserviceaccount.com" \
+  --role "roles/storage.objectAdmin"
+
+# Create key file
+gcloud iam service-accounts keys create /path/to/key.json \
+  --iam-account directus-storage@PROJECT_ID.iam.gserviceaccount.com
+```
+
+### IAM Permissions
+
+Minimum required permissions:
+
+```yaml
+permissions:
+  - storage.objects.create
+  - storage.objects.delete
+  - storage.objects.get
+  - storage.objects.list
+  - storage.objects.update
+```
+
+Use predefined role: `roles/storage.objectAdmin` or create custom role with minimal permissions.
+
+### Bucket Configuration
+
+Create bucket with appropriate settings:
+
+```bash
+# Create bucket
+gsutil mb -c STANDARD -l US-EAST1 gs://my-directus-bucket
+
+# Set uniform bucket-level access
+gsutil uniformbucketlevelaccess set on gs://my-directus-bucket
+
+# Configure lifecycle for cleanup
+gsutil lifecycle set lifecycle.json gs://my-directus-bucket
+```
+
+### CORS Configuration
+
+For browser access to files:
+
+```json
+[
+  {
+    "origin": ["https://your-directus-instance.com"],
+    "method": ["GET", "HEAD", "PUT", "POST", "DELETE"],
+    "responseHeader": ["Content-Type", "Upload-Offset", "Location"],
+    "maxAgeSeconds": 3600
+  }
+]
+```
+
+Apply CORS configuration:
+
+```bash
+gsutil cors set cors.json gs://my-directus-bucket
+```
+
+### Lifecycle Management
+
+Automate object lifecycle:
+
+```json
+{
+  "lifecycle": {
+    "rule": [
+      {
+        "action": {"type": "SetStorageClass", "storageClass": "NEARLINE"},
+        "condition": {"age": 30}
+      },
+      {
+        "action": {"type": "SetStorageClass", "storageClass": "COLDLINE"},
+        "condition": {"age": 90}
+      },
+      {
+        "action": {"type": "Delete"},
+        "condition": {
+          "age": 365,
+          "matchesPrefix": ["temp/"]
+        }
+      }
+    ]
+  }
+}
+```
+
+### Storage Classes
+
+Choose appropriate storage class:
+- **Standard** - Frequently accessed data
+- **Nearline** - Access < once per month
+- **Coldline** - Access < once per quarter
+- **Archive** - Access < once per year
+
+### Security
+
+1. Use uniform bucket-level access (recommended)
+2. Enable Cloud Audit Logs
+3. Configure VPC Service Controls for enhanced security
+4. Regularly rotate service account keys
+5. Use Workload Identity on GKE instead of key files
+
+### Performance Optimization
+
+- Use Cloud CDN for global distribution
+- Enable requester pays if appropriate
+- Consider multi-regional buckets for high availability
+- Use parallel composite uploads for large files (not yet in driver)
+
+### Workload Identity (GKE)
+
+For Kubernetes deployments:
+
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: directus
+  annotations:
+    iam.gke.io/gcp-service-account: directus-storage@PROJECT_ID.iam.gserviceaccount.com
+```
+
+```bash
+# Bind Kubernetes SA to GCP SA
+gcloud iam service-accounts add-iam-policy-binding \
+  directus-storage@PROJECT_ID.iam.gserviceaccount.com \
+  --role roles/iam.workloadIdentityUser \
+  --member "serviceAccount:PROJECT_ID.svc.id.goog[default/directus]"
+```
+
+## Troubleshooting
+
+### Authentication Errors
+
+1. Verify `GOOGLE_APPLICATION_CREDENTIALS` points to valid key file
+2. Check service account has required permissions
+3. Ensure service account is enabled
+4. Verify project ID in credentials matches bucket project
+
+### Bucket Access Denied
+
+1. Check IAM permissions on the bucket
+2. Verify bucket exists and name is correct
+3. Ensure service account has `storage.objects.list` permission
+4. Check organization policies
+
+### Invalid Chunk Size Error
+
+If you see "Invalid chunkSize provided":
+- Chunk size must be power of 2: 262144, 524288, 1048576, etc.
+- Minimum is 256 KiB (262144 bytes)
+- Use valid values: 256 KiB, 512 KiB, 1 MiB, 2 MiB, etc.
+
+### Resumable Upload Failures
+
+1. Check network stability
+2. Verify CRC32C hash validation
+3. Ensure upload session URI is preserved
+4. Check bucket quota limits
+
+### Connection Issues
+
+1. Verify network connectivity to GCS endpoints
+2. Check firewall rules
+3. Test with: `gsutil ls gs://my-bucket`
+4. Verify DNS resolution for `storage.googleapis.com`
+
+## Related
+
+- [Storage Overview](/storage/overview)
+- [S3 Storage](/storage/s3)
+- [Azure Storage](/storage/azure)

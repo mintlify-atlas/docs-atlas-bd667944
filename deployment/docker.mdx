@@ -1,0 +1,554 @@
+---
+title: Docker Deployment
+description: Deploy Directus using Docker and Docker Compose for containerized deployments with consistent environments.
+---
+
+Docker provides a consistent, containerized way to deploy Directus across any environment. This guide covers deploying Directus with Docker and Docker Compose.
+
+## Quick Start with Docker
+
+### Using Official Image
+
+Run Directus with SQLite (development only):
+
+```bash
+docker run -p 8055:8055 \
+  -e SECRET="replace-with-secure-random-value" \
+  -e ADMIN_EMAIL="admin@example.com" \
+  -e ADMIN_PASSWORD="d1r3ctu5" \
+  directus/directus
+```
+
+Access Directus at `http://localhost:8055`
+
+### With External Database
+
+Run Directus with PostgreSQL:
+
+```bash
+docker run -p 8055:8055 \
+  -e SECRET="replace-with-secure-random-value" \
+  -e ADMIN_EMAIL="admin@example.com" \
+  -e ADMIN_PASSWORD="d1r3ctu5" \
+  -e DB_CLIENT="postgres" \
+  -e DB_HOST="your-database-host" \
+  -e DB_PORT="5432" \
+  -e DB_DATABASE="directus" \
+  -e DB_USER="postgres" \
+  -e DB_PASSWORD="your-password" \
+  directus/directus
+```
+
+## Docker Compose
+
+Docker Compose is the recommended approach for production deployments.
+
+### Basic Setup
+
+Create `docker-compose.yml`:
+
+```yaml
+version: '3.8'
+
+services:
+  directus:
+    image: directus/directus:latest
+    ports:
+      - 8055:8055
+    environment:
+      SECRET: 'replace-with-secure-random-value'
+      ADMIN_EMAIL: 'admin@example.com'
+      ADMIN_PASSWORD: 'd1r3ctu5'
+      DB_CLIENT: 'postgres'
+      DB_HOST: 'database'
+      DB_PORT: '5432'
+      DB_DATABASE: 'directus'
+      DB_USER: 'directus'
+      DB_PASSWORD: 'directus'
+    volumes:
+      - ./uploads:/directus/uploads
+      - ./extensions:/directus/extensions
+    depends_on:
+      - database
+
+  database:
+    image: postgis/postgis:13-3.4-alpine
+    environment:
+      POSTGRES_USER: 'directus'
+      POSTGRES_PASSWORD: 'directus'
+      POSTGRES_DB: 'directus'
+    volumes:
+      - ./data:/var/lib/postgresql/data
+```
+
+### Production Setup
+
+Complete production setup with Redis, PostgreSQL, and persistence:
+
+```yaml
+version: '3.8'
+
+services:
+  directus:
+    image: directus/directus:latest
+    ports:
+      - 8055:8055
+    environment:
+      # Security
+      SECRET: '${SECRET}'
+      
+      # Database
+      DB_CLIENT: 'postgres'
+      DB_HOST: 'database'
+      DB_PORT: '5432'
+      DB_DATABASE: 'directus'
+      DB_USER: '${DB_USER}'
+      DB_PASSWORD: '${DB_PASSWORD}'
+      
+      # Admin User (first run only)
+      ADMIN_EMAIL: '${ADMIN_EMAIL}'
+      ADMIN_PASSWORD: '${ADMIN_PASSWORD}'
+      
+      # General
+      PUBLIC_URL: '${PUBLIC_URL}'
+      
+      # Cache & Rate Limiting
+      CACHE_ENABLED: 'true'
+      CACHE_STORE: 'redis'
+      REDIS: 'redis://cache:6379'
+      
+      # Storage
+      STORAGE_LOCATIONS: 'local'
+      STORAGE_LOCAL_ROOT: '/directus/uploads'
+      
+      # Email
+      EMAIL_FROM: '${EMAIL_FROM}'
+      EMAIL_TRANSPORT: 'smtp'
+      EMAIL_SMTP_HOST: '${EMAIL_SMTP_HOST}'
+      EMAIL_SMTP_PORT: '${EMAIL_SMTP_PORT}'
+      EMAIL_SMTP_USER: '${EMAIL_SMTP_USER}'
+      EMAIL_SMTP_PASSWORD: '${EMAIL_SMTP_PASSWORD}'
+      
+      # Performance
+      RATE_LIMITER_ENABLED: 'true'
+      RATE_LIMITER_STORE: 'redis'
+    volumes:
+      - ./uploads:/directus/uploads
+      - ./extensions:/directus/extensions
+    restart: unless-stopped
+    depends_on:
+      - database
+      - cache
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8055/server/health').then(r => r.ok || process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  database:
+    image: postgis/postgis:13-3.4-alpine
+    environment:
+      POSTGRES_USER: '${DB_USER}'
+      POSTGRES_PASSWORD: '${DB_PASSWORD}'
+      POSTGRES_DB: 'directus'
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  cache:
+    image: redis:6-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  db-data:
+```
+
+Create a `.env` file for sensitive values:
+
+```bash
+# Security
+SECRET=replace-with-secure-random-value-min-32-chars
+
+# Database
+DB_USER=directus
+DB_PASSWORD=your-secure-db-password
+
+# Admin User
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=your-secure-admin-password
+
+# General
+PUBLIC_URL=https://your-domain.com
+
+# Email
+EMAIL_FROM=noreply@example.com
+EMAIL_SMTP_HOST=smtp.example.com
+EMAIL_SMTP_PORT=587
+EMAIL_SMTP_USER=your-smtp-user
+EMAIL_SMTP_PASSWORD=your-smtp-password
+```
+
+### Start Services
+
+<Steps>
+  <Step title="Start Containers">
+    ```bash
+    docker compose up -d
+    ```
+  </Step>
+
+  <Step title="View Logs">
+    ```bash
+    docker compose logs -f directus
+    ```
+  </Step>
+
+  <Step title="Access Directus">
+    Open `http://localhost:8055` in your browser and log in with your admin credentials.
+  </Step>
+</Steps>
+
+## Dockerfile Reference
+
+The official Directus Dockerfile uses a multi-stage build:
+
+```dockerfile
+ARG NODE_VERSION=22
+
+# Build stage
+FROM node:${NODE_VERSION}-alpine AS builder
+
+RUN npm install --global corepack@latest
+RUN apk --no-cache add python3 py3-setuptools build-base
+
+WORKDIR /directus
+
+COPY package.json .
+RUN corepack enable && corepack prepare
+
+RUN chown node:node .
+USER node
+
+ENV NODE_OPTIONS=--max-old-space-size=8192
+
+COPY pnpm-lock.yaml .
+RUN pnpm fetch
+
+COPY --chown=node:node . .
+RUN pnpm install --recursive --offline --frozen-lockfile && \
+    npm_config_workspace_concurrency=2 pnpm run build && \
+    pnpm --filter directus deploy --legacy --prod dist
+
+# Production stage
+FROM node:${NODE_VERSION}-alpine AS runtime
+
+RUN npm install --global pm2@5 corepack@latest
+
+USER node
+WORKDIR /directus
+
+ENV DB_CLIENT="sqlite3" \
+    DB_FILENAME="/directus/database/database.sqlite" \
+    NODE_ENV="production" \
+    NPM_CONFIG_UPDATE_NOTIFIER="false"
+
+COPY --from=builder --chown=node:node /directus/ecosystem.config.cjs .
+COPY --from=builder --chown=node:node /directus/dist .
+
+EXPOSE 8055
+
+CMD node cli.js bootstrap && pm2-runtime start ecosystem.config.cjs
+```
+
+## Persistent Storage
+
+Ensure data persists across container restarts:
+
+### Database Data
+
+```yaml
+services:
+  database:
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+volumes:
+  db-data:
+```
+
+### File Uploads
+
+```yaml
+services:
+  directus:
+    volumes:
+      - ./uploads:/directus/uploads
+```
+
+### Extensions
+
+```yaml
+services:
+  directus:
+    volumes:
+      - ./extensions:/directus/extensions
+```
+
+## Using S3 for Storage
+
+Recommended for production to avoid container storage:
+
+```yaml
+services:
+  directus:
+    environment:
+      STORAGE_LOCATIONS: 's3'
+      STORAGE_S3_DRIVER: 's3'
+      STORAGE_S3_KEY: '${S3_ACCESS_KEY}'
+      STORAGE_S3_SECRET: '${S3_SECRET_KEY}'
+      STORAGE_S3_BUCKET: '${S3_BUCKET}'
+      STORAGE_S3_REGION: 'us-east-1'
+```
+
+## Advanced Configurations
+
+### Custom Extensions
+
+Mount your extensions directory:
+
+```yaml
+services:
+  directus:
+    volumes:
+      - ./extensions:/directus/extensions
+    environment:
+      EXTENSIONS_AUTO_RELOAD: 'true'
+```
+
+### WebSockets Support
+
+Enable WebSockets for real-time features:
+
+```yaml
+services:
+  directus:
+    environment:
+      WEBSOCKETS_ENABLED: 'true'
+      WEBSOCKETS_REST_ENABLED: 'true'
+      WEBSOCKETS_REST_PATH: '/websocket'
+```
+
+### Multiple Storage Locations
+
+```yaml
+services:
+  directus:
+    environment:
+      STORAGE_LOCATIONS: 'local,s3'
+      STORAGE_LOCAL_DRIVER: 'local'
+      STORAGE_LOCAL_ROOT: '/directus/uploads'
+      STORAGE_S3_DRIVER: 's3'
+      STORAGE_S3_KEY: '${S3_ACCESS_KEY}'
+      STORAGE_S3_SECRET: '${S3_SECRET_KEY}'
+      STORAGE_S3_BUCKET: '${S3_BUCKET}'
+      STORAGE_S3_REGION: 'us-east-1'
+```
+
+## Reverse Proxy with Nginx
+
+Add Nginx for SSL termination:
+
+```yaml
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - directus
+
+  directus:
+    expose:
+      - 8055
+    # Remove ports section - accessed via nginx
+```
+
+Create `nginx.conf`:
+
+```nginx
+http {
+  upstream directus {
+    server directus:8055;
+  }
+
+  server {
+    listen 80;
+    server_name your-domain.com;
+    return 301 https://$server_name$request_uri;
+  }
+
+  server {
+    listen 443 ssl http2;
+    server_name your-domain.com;
+
+    ssl_certificate /etc/nginx/ssl/cert.pem;
+    ssl_certificate_key /etc/nginx/ssl/key.pem;
+
+    location / {
+      proxy_pass http://directus;
+      proxy_http_version 1.1;
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection 'upgrade';
+      proxy_set_header Host $host;
+      proxy_set_header X-Real-IP $remote_addr;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header X-Forwarded-Proto $scheme;
+      proxy_cache_bypass $http_upgrade;
+    }
+  }
+}
+```
+
+## Docker Management
+
+### Useful Commands
+
+```bash
+# Start services
+docker compose up -d
+
+# Stop services
+docker compose down
+
+# View logs
+docker compose logs -f
+
+# Restart Directus
+docker compose restart directus
+
+# Execute commands in container
+docker compose exec directus /bin/sh
+
+# Update to latest image
+docker compose pull
+docker compose up -d
+```
+
+### Database Backups
+
+```bash
+# Backup PostgreSQL
+docker compose exec database pg_dump -U directus directus > backup.sql
+
+# Restore PostgreSQL
+docker compose exec -T database psql -U directus directus < backup.sql
+```
+
+### Monitor Resources
+
+```bash
+# View resource usage
+docker compose stats
+
+# View running containers
+docker compose ps
+```
+
+## Scaling with Docker Swarm
+
+Deploy multiple Directus instances:
+
+```yaml
+version: '3.8'
+
+services:
+  directus:
+    image: directus/directus:latest
+    deploy:
+      replicas: 3
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+    environment:
+      # Must use Redis for shared cache
+      CACHE_STORE: 'redis'
+      REDIS: 'redis://cache:6379'
+      # Must use external storage (not local)
+      STORAGE_LOCATIONS: 's3'
+```
+
+## Troubleshooting
+
+### Container Won't Start
+
+```bash
+# Check logs for errors
+docker compose logs directus
+
+# Verify environment variables
+docker compose config
+```
+
+### Database Connection Failed
+
+```bash
+# Ensure database is ready
+docker compose logs database
+
+# Test connection
+docker compose exec directus ping -c 3 database
+```
+
+### Permission Issues
+
+```bash
+# Fix upload directory permissions
+sudo chown -R 1000:1000 ./uploads
+sudo chmod -R 755 ./uploads
+```
+
+### Out of Memory
+
+Increase memory limits:
+
+```yaml
+services:
+  directus:
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+```
+
+## Security Best Practices
+
+1. **Don't expose database ports** - Keep database internal to Docker network
+2. **Use secrets** - Store sensitive data in `.env` file, never commit to Git
+3. **Update regularly** - Pull latest images for security patches
+4. **Use specific versions** - Pin image versions in production (e.g., `directus/directus:10.10.0`)
+5. **Enable health checks** - Ensure containers restart on failure
+6. **Limit resources** - Prevent containers from consuming all host resources
+
+## Next Steps
+
+- Configure [environment variables](/deployment/configuration)
+- Set up [automated backups](/deployment/configuration#backups)
+- Enable [monitoring](/deployment/configuration#monitoring)
+- Review [production checklist](/deployment/configuration#production-checklist)

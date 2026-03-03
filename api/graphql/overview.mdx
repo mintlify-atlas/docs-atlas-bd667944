@@ -1,0 +1,332 @@
+---
+title: 'GraphQL Overview'
+description: 'Learn how to use GraphQL with Directus to query and mutate your data'
+---
+
+## Introduction
+
+Directus provides a full-featured GraphQL API that dynamically generates a complete GraphQL schema based on your database structure. The GraphQL API offers an alternative to the REST API with powerful querying capabilities, type safety, and the ability to request exactly the data you need.
+
+## GraphQL Endpoints
+
+Directus exposes two GraphQL endpoints:
+
+### Items Endpoint
+
+```
+POST /graphql
+GET /graphql
+```
+
+The main GraphQL endpoint for querying and mutating your collections and items. This endpoint provides access to all your custom collections.
+
+### System Endpoint
+
+```
+POST /graphql/system
+GET /graphql/system
+```
+
+The system endpoint provides access to Directus system collections like users, roles, permissions, files, and more.
+
+## HTTP Methods
+
+Directus supports both `GET` and `POST` requests for GraphQL queries:
+
+- **POST**: Send queries, mutations, and subscriptions with variables in the request body
+- **GET**: Send queries only with parameters in the URL query string (mutations are not allowed via GET)
+
+<Warning>
+  Mutations cannot be executed via GET requests. Attempting to send a mutation via GET will result in a `MethodNotAllowedError`.
+</Warning>
+
+## Authentication
+
+GraphQL requests are authenticated the same way as REST API requests:
+
+**Bearer Token:**
+
+```bash
+curl https://your-directus-instance.com/graphql \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "{ articles { id title } }" }'
+```
+
+**Session Cookie:**
+
+If you're authenticated via session, the cookie will be automatically included in your requests.
+
+## GraphQL Request Format
+
+### POST Request
+
+Send a JSON payload with the following structure:
+
+```json
+{
+  "query": "query GetArticles { articles { id title } }",
+  "variables": {
+    "limit": 10
+  },
+  "operationName": "GetArticles"
+}
+```
+
+### GET Request
+
+Send query parameters in the URL:
+
+```
+GET /graphql?query={articles{id title}}&variables={"limit":10}
+```
+
+## Schema Generation
+
+Directus automatically generates a complete GraphQL schema based on your database structure:
+
+- **Collections** become GraphQL types
+- **Fields** become type fields with appropriate GraphQL types
+- **Relationships** are automatically resolved
+- **Permissions** are enforced at the schema level
+
+### Automatic Type Mapping
+
+Directus maps database field types to GraphQL types:
+
+| Database Type | GraphQL Type |
+|---------------|-------------|
+| `string`, `text` | `String` |
+| `integer` | `Int` |
+| `bigInteger` | `BigInt` |
+| `float`, `decimal` | `Float` |
+| `boolean` | `Boolean` |
+| `uuid` | `ID` |
+| `json` | `JSON` |
+| `dateTime`, `date`, `time`, `timestamp` | `Date` |
+| `geometry` | `GeoJSON` |
+| `hash` (passwords) | `Hash` (concealed) |
+| `csv` | `[String]` (array) |
+
+### Permission-Based Schema
+
+The GraphQL schema is dynamically generated based on the authenticated user's permissions:
+
+- Fields you don't have read access to are excluded from the schema
+- Collections you can't access won't appear in queries
+- Mutations are only available for collections you can create/update/delete
+
+This means each user role sees a different schema tailored to their permissions.
+
+## Schema Introspection
+
+GraphQL introspection allows you to explore the schema programmatically. By default, introspection is **enabled** in Directus.
+
+### Disable Introspection
+
+For production environments, you may want to disable introspection for security:
+
+```bash
+GRAPHQL_INTROSPECTION=false
+```
+
+When disabled, introspection queries will be rejected with a validation error.
+
+### Using Introspection
+
+You can use introspection to discover available types, fields, and operations:
+
+```graphql
+query IntrospectionQuery {
+  __schema {
+    queryType {
+      name
+      fields {
+        name
+        description
+      }
+    }
+  }
+}
+```
+
+## Configuration Options
+
+Directus provides several environment variables for configuring GraphQL:
+
+### Query Token Limit
+
+Limit the number of tokens in a GraphQL query to prevent overly complex queries:
+
+```bash
+GRAPHQL_QUERY_TOKEN_LIMIT=5000
+```
+
+### Schema Generation Concurrency
+
+Control how many schema generations can happen concurrently:
+
+```bash
+GRAPHQL_SCHEMA_GENERATION_MAX_CONCURRENT=5
+```
+
+### Introspection
+
+Enable or disable schema introspection:
+
+```bash
+GRAPHQL_INTROSPECTION=true
+```
+
+## GraphQL Scope
+
+The GraphQL implementation in Directus uses two scopes:
+
+- **`items`**: Your custom collections (available at `/graphql`)
+- **`system`**: System collections like users, roles, files (available at `/graphql/system`)
+
+## Error Handling
+
+GraphQL errors are returned in the standard GraphQL error format:
+
+```json
+{
+  "errors": [
+    {
+      "message": "You don't have permission to access this.",
+      "extensions": {
+        "code": "FORBIDDEN"
+      }
+    }
+  ],
+  "data": null
+}
+```
+
+Directus preserves detailed error information including:
+
+- Error messages
+- Error codes
+- Field paths where errors occurred
+- Original error extensions
+
+## GraphQL Playground
+
+For development and testing, you can use GraphQL clients like:
+
+- [GraphiQL](https://github.com/graphql/graphiql)
+- [Apollo Studio](https://studio.apollographql.com/)
+- [Insomnia](https://insomnia.rest/)
+- [Postman](https://www.postman.com/)
+
+These tools provide features like:
+
+- Interactive query building
+- Schema exploration
+- Auto-completion
+- Query history
+- Variable management
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Request Only What You Need">
+    One of GraphQL's main benefits is requesting exactly the fields you need:
+
+    ```graphql
+    # Good - only request needed fields
+    query {
+      articles {
+        id
+        title
+      }
+    }
+
+    # Avoid - requesting all fields when you don't need them
+    query {
+      articles {
+        id
+        title
+        content
+        author { id name email bio }
+        created_at
+        updated_at
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Use Variables for Dynamic Values">
+    Always use variables instead of hardcoding values in queries:
+
+    ```graphql
+    # Good - using variables
+    query GetArticle($id: ID!) {
+      articles_by_id(id: $id) {
+        id
+        title
+      }
+    }
+
+    # Avoid - hardcoded values
+    query {
+      articles_by_id(id: "123") {
+        id
+        title
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Use Fragments for Reusable Fields">
+    Define fragments for commonly used field sets:
+
+    ```graphql
+    fragment ArticleFields on articles {
+      id
+      title
+      status
+      created_at
+    }
+
+    query {
+      articles {
+        ...ArticleFields
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Leverage Aliases for Multiple Queries">
+    Use aliases when fetching the same collection with different filters:
+
+    ```graphql
+    query {
+      published: articles(filter: { status: { _eq: "published" } }) {
+        id
+        title
+      }
+      drafts: articles(filter: { status: { _eq: "draft" } }) {
+        id
+        title
+      }
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="GraphQL Queries" icon="magnifying-glass" href="/api/graphql/queries">
+    Learn how to query data with GraphQL
+  </Card>
+  
+  <Card title="GraphQL Mutations" icon="pen-to-square" href="/api/graphql/mutations">
+    Create, update, and delete data with mutations
+  </Card>
+  
+  <Card title="GraphQL Subscriptions" icon="tower-broadcast" href="/api/graphql/subscriptions">
+    Real-time updates with GraphQL subscriptions
+  </Card>
+</CardGroup>

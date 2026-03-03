@@ -1,80 +1,545 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick Start Guide
+description: Get up and running with Directus in under 5 minutes. This guide walks you through installation, setup, and making your first API call.
 ---
 
-## Get started in three steps
+# Quick Start Guide
 
-Get your documentation site running locally and make your first customization.
+Get Directus up and running in under 5 minutes. This guide will take you from installation to making your first API call.
 
-### Step 1: Set up your local environment
+<Info>
+  **Prerequisites**: Node.js 22 or higher is required. Check your version with `node -v`
+</Info>
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+## Installation Methods
 
-### Step 2: Deploy your changes
+Choose your preferred installation method:
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+<Tabs>
+  <Tab title="npx (Easiest)">
+    The fastest way to get started - no global installation required:
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+    ```bash
+    npx directus@latest init my-project
+    ```
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+    This creates a new Directus project in the `my-project` directory.
+  </Tab>
 
-### Step 3: Go live
+  <Tab title="Docker (Recommended)">
+    Use Docker for a production-ready setup:
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+    ```bash
+    docker run -d \
+      -p 8055:8055 \
+      -e KEY=replace-with-random-value \
+      -e SECRET=replace-with-random-value \
+      -e ADMIN_EMAIL=admin@example.com \
+      -e ADMIN_PASSWORD=d1r3ctu5 \
+      -e DB_CLIENT=sqlite3 \
+      -e DB_FILENAME=/directus/database/database.sqlite \
+      -v directus_data:/directus/database \
+      directus/directus
+    ```
 
-## Next steps
+    <Warning>
+      Replace `KEY`, `SECRET`, and admin credentials with your own secure values in production.
+    </Warning>
+  </Tab>
 
-Now that you have your docs running, explore these key features:
+  <Tab title="pnpm">
+    Install globally with pnpm:
+
+    ```bash
+    # Install Directus globally
+    pnpm install -g directus
+
+    # Create a new project
+    directus init my-project
+    ```
+  </Tab>
+
+  <Tab title="npm">
+    Install globally with npm:
+
+    ```bash
+    # Install Directus globally
+    npm install -g directus
+
+    # Create a new project
+    directus init my-project
+    ```
+  </Tab>
+</Tabs>
+
+## Step-by-Step Setup
+
+<Steps>
+  <Step title="Initialize the Project">
+    Create a new Directus project:
+
+    ```bash
+    npx directus@latest init my-project
+    cd my-project
+    ```
+
+    The `init` command will:
+    - Create a new directory for your project
+    - Set up the file structure
+    - Generate security keys
+    - Create a basic `.env` configuration file
+  </Step>
+
+  <Step title="Configure Database">
+    Directus works with SQLite by default (perfect for getting started). For production, you'll want to use PostgreSQL or MySQL.
+
+    <CodeGroup>
+      ```bash SQLite (Default)
+      # No configuration needed - works out of the box!
+      DB_CLIENT="sqlite3"
+      DB_FILENAME="./data.db"
+      ```
+
+      ```bash PostgreSQL
+      DB_CLIENT="pg"
+      DB_HOST="localhost"
+      DB_PORT=5432
+      DB_DATABASE="directus"
+      DB_USER="directus"
+      DB_PASSWORD="directus"
+      ```
+
+      ```bash MySQL
+      DB_CLIENT="mysql2"
+      DB_HOST="localhost"
+      DB_PORT=3306
+      DB_DATABASE="directus"
+      DB_USER="directus"
+      DB_PASSWORD="directus"
+      ```
+    </CodeGroup>
+
+    <Tip>
+      SQLite is great for development and testing. For production deployments, use PostgreSQL or MySQL.
+    </Tip>
+  </Step>
+
+  <Step title="Bootstrap the Database">
+    Install the database schema and create an admin user:
+
+    ```bash
+    npx directus bootstrap
+    ```
+
+    You'll be prompted to create an admin account. The bootstrap command will:
+    - Create all necessary database tables
+    - Set up system collections and fields
+    - Create the admin role
+    - Create your first admin user
+
+    <Info>
+      If you're using Docker, the bootstrap happens automatically on first run.
+    </Info>
+  </Step>
+
+  <Step title="Start the Server">
+    Start the Directus server:
+
+    ```bash
+    npx directus start
+    ```
+
+    The server will start on `http://localhost:8055` by default.
+
+    <Note>
+      You can customize the host and port with environment variables:
+      - `HOST=0.0.0.0` (default)
+      - `PORT=8055` (default)
+    </Note>
+  </Step>
+
+  <Step title="Access the Dashboard">
+    Open your browser and navigate to:
+
+    ```
+    http://localhost:8055
+    ```
+
+    You'll be redirected to the admin login page at `http://localhost:8055/admin`. Log in with the admin credentials you created during bootstrap.
+
+    <Check>
+      Congratulations! You now have a fully functional Directus instance running.
+    </Check>
+  </Step>
+
+  <Step title="Create Your First Collection">
+    Collections are like database tables. Let's create one:
+
+    1. Click the **Settings** icon in the sidebar (gear icon)
+    2. Navigate to **Data Model**
+    3. Click **Create Collection**
+    4. Name it `articles`
+    5. Add these fields:
+       - `title` (String)
+       - `content` (Text, Interface: WYSIWYG)
+       - `published_date` (DateTime)
+       - `status` (String, Interface: Dropdown with options: draft, published)
+
+    Your collection is now ready to use!
+  </Step>
+
+  <Step title="Make Your First API Call">
+    Now let's interact with the API. First, get an access token:
+
+    <CodeGroup>
+      ```bash cURL
+      curl -X POST http://localhost:8055/auth/login \
+        -H "Content-Type: application/json" \
+        -d '{
+          "email": "admin@example.com",
+          "password": "your-password"
+        }'
+      ```
+
+      ```javascript JavaScript
+      const response = await fetch('http://localhost:8055/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: 'admin@example.com',
+          password: 'your-password'
+        })
+      });
+
+      const { data } = await response.json();
+      const accessToken = data.access_token;
+      ```
+
+      ```python Python
+      import requests
+
+      response = requests.post('http://localhost:8055/auth/login', json={
+          'email': 'admin@example.com',
+          'password': 'your-password'
+      })
+
+      access_token = response.json()['data']['access_token']
+      ```
+    </CodeGroup>
+
+    Then create your first article:
+
+    <CodeGroup>
+      ```bash cURL
+      curl -X POST http://localhost:8055/items/articles \
+        -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d '{
+          "title": "My First Article",
+          "content": "<p>Hello, Directus!</p>",
+          "published_date": "2024-03-15T10:00:00Z",
+          "status": "published"
+        }'
+      ```
+
+      ```javascript JavaScript
+      const response = await fetch('http://localhost:8055/items/articles', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          title: 'My First Article',
+          content: '<p>Hello, Directus!</p>',
+          published_date: '2024-03-15T10:00:00Z',
+          status: 'published'
+        })
+      });
+
+      const { data } = await response.json();
+      console.log('Created article:', data);
+      ```
+
+      ```python Python
+      response = requests.post(
+          'http://localhost:8055/items/articles',
+          headers={'Authorization': f'Bearer {access_token}'},
+          json={
+              'title': 'My First Article',
+              'content': '<p>Hello, Directus!</p>',
+              'published_date': '2024-03-15T10:00:00Z',
+              'status': 'published'
+          }
+      )
+
+      article = response.json()['data']
+      print('Created article:', article)
+      ```
+    </CodeGroup>
+
+    Retrieve all articles:
+
+    <CodeGroup>
+      ```bash cURL
+      curl http://localhost:8055/items/articles \
+        -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+      ```
+
+      ```javascript JavaScript
+      const response = await fetch('http://localhost:8055/items/articles', {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+
+      const { data } = await response.json();
+      console.log('Articles:', data);
+      ```
+
+      ```python Python
+      response = requests.get(
+          'http://localhost:8055/items/articles',
+          headers={'Authorization': f'Bearer {access_token}'}
+      )
+
+      articles = response.json()['data']
+      print('Articles:', articles)
+      ```
+    </CodeGroup>
+  </Step>
+</Steps>
+
+## Using the TypeScript SDK
+
+For a better developer experience, use the official Directus SDK:
+
+```bash
+npm install @directus/sdk
+```
+
+Here's a complete example:
+
+```typescript
+import { createDirectus, rest, authentication } from '@directus/sdk';
+
+// Define your schema (TypeScript)
+interface Article {
+  id: number;
+  title: string;
+  content: string;
+  published_date: string;
+  status: 'draft' | 'published';
+}
+
+interface Schema {
+  articles: Article[];
+}
+
+// Create the Directus client
+const client = createDirectus<Schema>('http://localhost:8055')
+  .with(authentication())
+  .with(rest());
+
+// Login
+await client.login('admin@example.com', 'your-password');
+
+// Create an article
+const newArticle = await client.request(
+  createItem('articles', {
+    title: 'My First Article',
+    content: '<p>Hello, Directus!</p>',
+    published_date: new Date().toISOString(),
+    status: 'published'
+  })
+);
+
+// Read articles
+const articles = await client.request(
+  readItems('articles', {
+    filter: { status: { _eq: 'published' } },
+    sort: ['-published_date'],
+    limit: 10
+  })
+);
+
+console.log('Published articles:', articles);
+```
+
+## Using GraphQL
+
+Directus automatically generates a GraphQL endpoint at `/graphql`:
+
+```graphql
+# Query articles
+query {
+  articles(filter: { status: { _eq: "published" } }) {
+    id
+    title
+    content
+    published_date
+    status
+  }
+}
+
+# Create an article
+mutation {
+  create_articles_item(data: {
+    title: "My First Article"
+    content: "<p>Hello, Directus!</p>"
+    published_date: "2024-03-15T10:00:00Z"
+    status: "published"
+  }) {
+    id
+    title
+  }
+}
+```
+
+You can explore the GraphQL API using the built-in GraphQL playground at:
+
+```
+http://localhost:8055/graphql
+```
+
+## Available CLI Commands
+
+Directus provides several useful CLI commands:
+
+<CodeGroup>
+  ```bash Start Server
+  directus start
+  ```
+
+  ```bash Bootstrap Database
+  directus bootstrap
+  ```
+
+  ```bash Database Migrations
+  # Run all pending migrations
+  directus database migrate:latest
+
+  # Run one migration up
+  directus database migrate:up
+
+  # Revert one migration
+  directus database migrate:down
+  ```
+
+  ```bash User Management
+  # Create a new user
+  directus users create --email user@example.com --password secret --role admin
+
+  # Change user password
+  directus users passwd --email user@example.com --password newsecret
+  ```
+
+  ```bash Security
+  # Generate a new KEY
+  directus security key:generate
+
+  # Generate a new SECRET
+  directus security secret:generate
+  ```
+
+  ```bash Schema Management
+  # Create a schema snapshot
+  directus schema snapshot ./snapshot.yaml
+
+  # Apply a schema snapshot
+  directus schema apply ./snapshot.yaml
+  ```
+</CodeGroup>
+
+## Next Steps
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Installation Guide" icon="download" href="/installation">
+    Learn about production deployment with Docker and environment configuration
+  </Card>
+  <Card title="Data Model" icon="table">
+    Design your database schema with collections, fields, and relationships
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/rest">
+    Explore all available REST API endpoints and parameters
+  </Card>
+  <Card title="SDK Documentation" icon="book" href="/sdk">
+    Deep dive into the TypeScript SDK and advanced usage
+  </Card>
+  <Card title="Authentication" icon="lock">
+    Set up authentication providers: OAuth, LDAP, SAML, and more
+  </Card>
+  <Card title="Extensions" icon="puzzle-piece">
+    Extend Directus with custom interfaces, layouts, and endpoints
+  </Card>
 </CardGroup>
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+## Common Issues
+
+<AccordionGroup>
+  <Accordion title="Port 8055 already in use">
+    If port 8055 is already in use, you can change it by setting the `PORT` environment variable:
+
+    ```bash
+    PORT=3000 npx directus start
+    ```
+
+    Or add it to your `.env` file:
+
+    ```bash
+    PORT=3000
+    ```
+  </Accordion>
+
+  <Accordion title="Database connection failed">
+    Make sure your database is running and the connection details in your `.env` file are correct:
+
+    - Check `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USER`, and `DB_PASSWORD`
+    - Ensure the database exists
+    - Verify network connectivity to the database server
+    - For PostgreSQL, install the `pg` package: `npm install pg`
+    - For MySQL, install the `mysql2` package: `npm install mysql2`
+  </Accordion>
+
+  <Accordion title="KEY and SECRET not set">
+    If you see errors about `KEY` or `SECRET` not being set, generate them:
+
+    ```bash
+    directus security key:generate
+    directus security secret:generate
+    ```
+
+    Then add them to your `.env` file:
+
+    ```bash
+    KEY="generated-key-value-here"
+    SECRET="generated-secret-value-here"
+    ```
+  </Accordion>
+
+  <Accordion title="Cannot find module '@directus/api'">
+    If you're running from source or development, make sure to build the project first:
+
+    ```bash
+    pnpm install
+    pnpm build
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Production Checklist
+
+Before deploying to production:
+
+- [ ] Use PostgreSQL or MySQL (not SQLite)
+- [ ] Set strong `KEY` and `SECRET` values
+- [ ] Configure `PUBLIC_URL` to your domain
+- [ ] Enable CORS if needed for your frontend
+- [ ] Set up Redis for caching and rate limiting
+- [ ] Configure email transport for password resets
+- [ ] Enable rate limiting
+- [ ] Set up SSL/TLS certificates
+- [ ] Configure proper backups
+- [ ] Review security and permissions
+
+See the [Installation Guide](/installation) for detailed production setup instructions.

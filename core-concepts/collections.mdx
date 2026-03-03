@@ -1,0 +1,254 @@
+---
+title: Collections
+description: Collections are the foundation of your data structure in Directus, representing database tables that organize and store your content.
+---
+
+## What are Collections?
+
+Collections in Directus are analogous to tables in a traditional SQL database. Each collection represents a distinct data entity in your project, such as articles, products, users, or any custom content type you define. Collections serve as containers for items and define the overall structure of your data model.
+
+<Note>
+Directus maintains both a schema representation (the actual database table) and metadata (configuration for how the collection appears in the app).
+</Note>
+
+## How Collections Work
+
+When you create a collection in Directus, two things happen:
+
+1. **Database Schema**: A table is created in your SQL database with the specified structure
+2. **Collection Metadata**: Configuration is stored in `directus_collections` to control app behavior
+
+### Collection Structure
+
+Every collection in Directus consists of:
+
+- **Collection Name**: A unique identifier (maps to the database table name)
+- **Fields**: Individual data points within the collection (columns in the database)
+- **Schema**: The actual database table structure
+- **Meta**: Display and behavior configuration for the Directus app
+
+```typescript
+// From ~/workspace/source/packages/types/src/collection.ts:35
+interface Collection {
+  collection: string;           // The unique collection identifier
+  meta: CollectionMeta | null;  // App configuration and metadata
+  schema: Table | null;         // Database table structure
+}
+```
+
+## Creating Collections
+
+Collections can be created through the API or programmatically. When creating a collection, Directus automatically adds a primary key field if you don't specify one.
+
+### API Example
+
+```http
+POST /collections
+Content-Type: application/json
+
+{
+  "collection": "articles",
+  "meta": {
+    "icon": "article",
+    "note": "Blog articles and posts"
+  },
+  "schema": {},
+  "fields": [
+    {
+      "field": "title",
+      "type": "string",
+      "meta": {
+        "interface": "input",
+        "required": true
+      },
+      "schema": {
+        "max_length": 255
+      }
+    }
+  ]
+}
+```
+
+### Automatic Primary Key
+
+From the source code (`~/workspace/source/api/src/services/collections.ts:110-122`), Directus ensures every collection has a primary key:
+
+```typescript
+const injectedPrimaryKeyField: RawField = {
+  field: 'id',
+  type: 'integer',
+  meta: {
+    hidden: true,
+    interface: 'numeric',
+    readonly: true,
+  },
+  schema: {
+    is_primary_key: true,
+    has_auto_increment: true,
+  },
+};
+```
+
+<Warning>
+Collection names cannot start with `directus_` as this prefix is reserved for system collections.
+</Warning>
+
+## Collection Metadata
+
+Collection metadata controls how collections appear and behave in the Directus app. Key metadata properties include:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `icon` | string | Icon displayed in the app navigation |
+| `note` | string | Description of the collection |
+| `hidden` | boolean | Whether to hide from navigation |
+| `singleton` | boolean | Only allows one item in the collection |
+| `sort_field` | string | Field used for manual sorting |
+| `archive_field` | string | Field that marks items as archived |
+| `accountability` | string | Track activity for items (`all`, `activity`, or `null`) |
+| `translations` | array | Multilingual labels for the collection |
+| `versioning` | boolean | Enable content versioning |
+
+### Singleton Collections
+
+Singleton collections are special collections that can only contain one item, useful for settings pages or global configuration:
+
+```json
+{
+  "collection": "site_settings",
+  "meta": {
+    "singleton": true,
+    "icon": "settings"
+  }
+}
+```
+
+## System Collections
+
+Directus includes built-in system collections that power core functionality:
+
+- `directus_users` - User accounts
+- `directus_roles` - User roles
+- `directus_permissions` - Access control rules
+- `directus_files` - File assets
+- `directus_folders` - File organization
+- `directus_activity` - Audit log
+- `directus_revisions` - Content versioning history
+- `directus_collections` - Collection metadata
+- `directus_fields` - Field configurations
+- `directus_relations` - Relationship definitions
+
+<Info>
+System collections cannot be deleted and have restricted modification capabilities to ensure platform stability.
+</Info>
+
+## Common Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Content Management" icon="file-lines">
+    Create collections for blogs, articles, pages, and other content types with custom fields for titles, body text, authors, and publication dates.
+  </Card>
+  
+  <Card title="E-commerce" icon="cart-shopping">
+    Build product catalogs with collections for products, categories, reviews, and orders, leveraging relationships between collections.
+  </Card>
+  
+  <Card title="User Directories" icon="users">
+    Extend the default user system with custom profile collections that relate to `directus_users` for additional user metadata.
+  </Card>
+  
+  <Card title="Media Libraries" icon="images">
+    Organize media assets using collections that relate to `directus_files` with additional metadata like tags, categories, or licenses.
+  </Card>
+</CardGroup>
+
+## Collection Operations
+
+### Reading Collections
+
+Retrieve all collections in your project:
+
+```http
+GET /collections
+```
+
+Get a specific collection:
+
+```http
+GET /collections/articles
+```
+
+### Updating Collections
+
+Update collection metadata:
+
+```http
+PATCH /collections/articles
+Content-Type: application/json
+
+{
+  "meta": {
+    "icon": "newspaper",
+    "note": "Published articles and blog posts"
+  }
+}
+```
+
+### Deleting Collections
+
+<Warning>
+Deleting a collection is destructive and will permanently remove the database table, all items, and related configurations.
+</Warning>
+
+```http
+DELETE /collections/articles
+```
+
+From the source code (`~/workspace/source/api/src/services/collections.ts:617-677`), deleting a collection also removes:
+
+- The database table and all records
+- Field configurations in `directus_fields`
+- Permissions in `directus_permissions`
+- Activity logs in `directus_activity`
+- Revisions in `directus_revisions`
+- Related relationships in `directus_relations`
+
+## Grouping Collections
+
+Collections can be organized into groups for better navigation:
+
+```json
+{
+  "collection": "blog_posts",
+  "meta": {
+    "group": "blog"
+  }
+}
+```
+
+The `group` field references another collection that serves as the parent group.
+
+## Best Practices
+
+<Tip>
+**Use Clear Naming**: Choose descriptive, lowercase collection names with underscores (e.g., `blog_posts`, `product_reviews`).
+</Tip>
+
+<Tip>
+**Plan Your Schema**: Think through your data model before creating collections. Changing structure later requires careful migration.
+</Tip>
+
+<Tip>
+**Leverage Metadata**: Use icons, notes, and translations to make your collections user-friendly for content editors.
+</Tip>
+
+<Tip>
+**Enable Accountability**: Set `accountability` to track who created and modified items for audit trails.
+</Tip>
+
+## Related Concepts
+
+- **[Fields](/core-concepts/fields)** - Define the structure of data within collections
+- **[Items](/core-concepts/items)** - Individual records stored in collections
+- **[Relationships](/core-concepts/relationships)** - Connect data across collections
+- **[Permissions](/core-concepts/permissions)** - Control access to collections

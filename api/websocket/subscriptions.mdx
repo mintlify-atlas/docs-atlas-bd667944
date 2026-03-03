@@ -1,0 +1,724 @@
+---
+title: 'WebSocket Subscriptions'
+description: 'Subscribe to real-time updates for collections using WebSocket subscriptions'
+---
+
+## Introduction
+
+WebSocket subscriptions allow you to receive real-time updates when items are created, updated, or deleted in your Directus collections. Subscriptions maintain a persistent connection and push updates to clients instantly as they happen.
+
+## Prerequisites
+
+Before using subscriptions, ensure:
+
+1. WebSockets are enabled:
+   ```bash
+   WEBSOCKETS_ENABLED=true
+   WEBSOCKETS_REST_ENABLED=true
+   ```
+
+2. You have an active WebSocket connection
+3. You're authenticated (if required by your auth mode)
+
+## Subscribe to a Collection
+
+To subscribe to updates for a collection, send a `subscribe` message:
+
+```javascript
+ws.send(JSON.stringify({
+  type: 'subscribe',
+  collection: 'articles',
+  uid: 'subscription-1'
+}));
+```
+
+**Response:**
+
+```json
+{
+  "type": "subscription",
+  "status": "ok",
+  "uid": "subscription-1",
+  "data": {
+    "event": "init"
+  }
+}
+```
+
+The `init` event confirms the subscription is active.
+
+## Subscription Message Format
+
+```typescript
+{
+  type: 'subscribe';
+  collection: string;           // Collection name
+  uid?: string | number;        // Optional unique identifier
+  event?: 'create' | 'update' | 'delete'; // Filter by event type
+  item?: string | number;       // Subscribe to specific item
+  query?: {
+    fields?: string[];          // Fields to return
+    filter?: object;            // Filter conditions
+    limit?: number;             // Limit results
+    sort?: string[];            // Sort order
+    // ... other query parameters
+  };
+}
+```
+
+## Subscription Events
+
+Subscriptions emit events when items are created, updated, or deleted:
+
+### Create Event
+
+```json
+{
+  "type": "subscription",
+  "uid": "subscription-1",
+  "data": {
+    "event": "create",
+    "data": [{
+      "id": 123,
+      "title": "New Article",
+      "status": "draft"
+    }]
+  }
+}
+```
+
+### Update Event
+
+```json
+{
+  "type": "subscription",
+  "uid": "subscription-1",
+  "data": {
+    "event": "update",
+    "data": [{
+      "id": 123,
+      "title": "Updated Article",
+      "status": "published"
+    }]
+  }
+}
+```
+
+### Delete Event
+
+```json
+{
+  "type": "subscription",
+  "uid": "subscription-1",
+  "data": {
+    "event": "delete",
+    "data": ["123"]
+  }
+}
+```
+
+<Note>
+  Delete events return an array of deleted item IDs, not the full item data.
+</Note>
+
+## Subscribe with Query Parameters
+
+Control what data you receive by adding query parameters:
+
+### Select Specific Fields
+
+```javascript
+ws.send(JSON.stringify({
+  type: 'subscribe',
+  collection: 'articles',
+  uid: 'sub-1',
+  query: {
+    fields: ['id', 'title', 'status', 'published_date']
+  }
+}));
+```
+
+You'll only receive the specified fields in updates.
+
+### Apply Filters
+
+Only receive updates for items matching specific criteria:
+
+```javascript
+ws.send(JSON.stringify({
+  type: 'subscribe',
+  collection: 'articles',
+  uid: 'sub-2',
+  query: {
+    fields: ['*'],
+    filter: {
+      status: { _eq: 'published' },
+      category: { _in: ['tech', 'science'] }
+    }
+  }
+}));
+```
+
+You'll only receive updates for published articles in the tech or science categories.
+
+### Limit Results
+
+```javascript
+ws.send(JSON.stringify({
+  type: 'subscribe',
+  collection: 'articles',
+  uid: 'sub-3',
+  query: {
+    fields: ['id', 'title'],
+    limit: 10,
+    sort: ['-created_at']
+  }
+}));
+```
+
+## Filter by Event Type
+
+Subscribe only to specific event types:
+
+### Create Events Only
+
+```javascript
+ws.send(JSON.stringify({
+  type: 'subscribe',
+  collection: 'articles',
+  event: 'create',
+  uid: 'sub-create'
+}));
+```
+
+### Update Events Only
+
+```javascript
+ws.send(JSON.stringify({
+  type: 'subscribe',
+  collection: 'articles',
+  event: 'update',
+  uid: 'sub-update'
+}));
+```
+
+### Delete Events Only
+
+```javascript
+ws.send(JSON.stringify({
+  type: 'subscribe',
+  collection: 'articles',
+  event: 'delete',
+  uid: 'sub-delete'
+}));
+```
+
+## Subscribe to Specific Item
+
+Monitor changes to a single item:
+
+```javascript
+ws.send(JSON.stringify({
+  type: 'subscribe',
+  collection: 'articles',
+  item: 123,
+  uid: 'sub-item-123'
+}));
+```
+
+You'll receive updates only when item `123` is updated or deleted.
+
+<Warning>
+  You cannot subscribe to specific items in the `directus_fields` or `directus_relations` system collections. Subscribe to the entire collection instead.
+</Warning>
+
+## Subscribe with Relationships
+
+Include related data in subscription updates:
+
+```javascript
+ws.send(JSON.stringify({
+  type: 'subscribe',
+  collection: 'articles',
+  uid: 'sub-with-relations',
+  query: {
+    fields: [
+      'id',
+      'title',
+      'status',
+      'author.id',
+      'author.name',
+      'author.email',
+      'categories.categories_id.id',
+      'categories.categories_id.name'
+    ]
+  }
+}));
+```
+
+**Response with related data:**
+
+```json
+{
+  "type": "subscription",
+  "uid": "sub-with-relations",
+  "data": {
+    "event": "create",
+    "data": [{
+      "id": 123,
+      "title": "New Article",
+      "status": "published",
+      "author": {
+        "id": 5,
+        "name": "John Doe",
+        "email": "john@example.com"
+      },
+      "categories": [
+        {
+          "categories_id": {
+            "id": 1,
+            "name": "Technology"
+          }
+        },
+        {
+          "categories_id": {
+            "id": 2,
+            "name": "Science"
+          }
+        }
+      ]
+    }]
+  }
+}
+```
+
+## Unsubscribe
+
+Stop receiving updates by sending an `unsubscribe` message:
+
+```javascript
+ws.send(JSON.stringify({
+  type: 'unsubscribe',
+  uid: 'subscription-1'
+}));
+```
+
+**Response:**
+
+```json
+{
+  "type": "subscription",
+  "status": "ok",
+  "uid": "subscription-1",
+  "data": {
+    "event": "unsubscribe"
+  }
+}
+```
+
+If you don't provide a `uid`, all subscriptions for the connection will be removed.
+
+## Multiple Subscriptions
+
+You can have multiple active subscriptions on a single connection:
+
+```javascript
+// Subscribe to articles
+ws.send(JSON.stringify({
+  type: 'subscribe',
+  collection: 'articles',
+  uid: 'sub-articles'
+}));
+
+// Subscribe to comments
+ws.send(JSON.stringify({
+  type: 'subscribe',
+  collection: 'comments',
+  uid: 'sub-comments'
+}));
+
+// Subscribe to users
+ws.send(JSON.stringify({
+  type: 'subscribe',
+  collection: 'users',
+  uid: 'sub-users'
+}));
+```
+
+Each subscription is tracked independently via its `uid`.
+
+## Permission Handling
+
+Subscriptions respect user permissions:
+
+- You can only subscribe to collections you have read access to
+- You only receive updates for items you can read
+- If a filter query requires permissions you don't have, you'll get an error
+- If permissions change and you lose access, updates stop silently
+
+**Permission error example:**
+
+```json
+{
+  "type": "subscribe",
+  "status": "error",
+  "uid": "subscription-1",
+  "error": {
+    "code": "FORBIDDEN",
+    "message": "You don't have permission to access this collection."
+  }
+}
+```
+
+## Complete Example
+
+Here's a complete example with authentication and subscriptions:
+
+```javascript
+const ws = new WebSocket('ws://your-directus-instance.com/websocket');
+const subscriptions = new Map();
+
+ws.onopen = () => {
+  console.log('Connected');
+  
+  // Authenticate
+  ws.send(JSON.stringify({
+    type: 'auth',
+    access_token: 'your-access-token'
+  }));
+};
+
+ws.onmessage = (event) => {
+  const message = JSON.parse(event.data);
+  
+  // Handle authentication response
+  if (message.type === 'auth' && message.status === 'ok') {
+    console.log('Authenticated successfully');
+    
+    // Subscribe to articles
+    ws.send(JSON.stringify({
+      type: 'subscribe',
+      collection: 'articles',
+      uid: 'articles-sub',
+      query: {
+        fields: ['id', 'title', 'status'],
+        filter: {
+          status: { _eq: 'published' }
+        }
+      }
+    }));
+  }
+  
+  // Handle subscription responses
+  if (message.type === 'subscription') {
+    const { uid, data } = message;
+    
+    if (data.event === 'init') {
+      console.log(`Subscription ${uid} initialized`);
+      subscriptions.set(uid, true);
+    }
+    
+    if (data.event === 'create') {
+      console.log('New item created:', data.data);
+      // Update UI with new item
+    }
+    
+    if (data.event === 'update') {
+      console.log('Item updated:', data.data);
+      // Update UI with modified item
+    }
+    
+    if (data.event === 'delete') {
+      console.log('Item deleted:', data.data);
+      // Remove item from UI
+    }
+    
+    if (data.event === 'unsubscribe') {
+      console.log(`Unsubscribed from ${uid}`);
+      subscriptions.delete(uid);
+    }
+  }
+  
+  // Handle errors
+  if (message.status === 'error') {
+    console.error('Error:', message.error);
+  }
+};
+
+ws.onerror = (error) => {
+  console.error('WebSocket error:', error);
+};
+
+ws.onclose = () => {
+  console.log('Connection closed');
+  subscriptions.clear();
+};
+
+// Unsubscribe before closing
+window.addEventListener('beforeunload', () => {
+  subscriptions.forEach((_, uid) => {
+    ws.send(JSON.stringify({
+      type: 'unsubscribe',
+      uid: uid
+    }));
+  });
+  
+  ws.close();
+});
+```
+
+## Using with React
+
+Example React hook for WebSocket subscriptions:
+
+```javascript
+import { useEffect, useState } from 'react';
+
+function useWebSocketSubscription(collection, query = {}) {
+  const [data, setData] = useState([]);
+  const [error, setError] = useState(null);
+  const [connected, setConnected] = useState(false);
+
+  useEffect(() => {
+    const ws = new WebSocket('ws://your-directus-instance.com/websocket');
+    const subscriptionId = `${collection}-sub`;
+
+    ws.onopen = () => {
+      setConnected(true);
+      
+      // Authenticate
+      ws.send(JSON.stringify({
+        type: 'auth',
+        access_token: localStorage.getItem('access_token')
+      }));
+    };
+
+    ws.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+
+      if (message.type === 'auth' && message.status === 'ok') {
+        // Subscribe after authentication
+        ws.send(JSON.stringify({
+          type: 'subscribe',
+          collection,
+          uid: subscriptionId,
+          query
+        }));
+      }
+
+      if (message.type === 'subscription' && message.uid === subscriptionId) {
+        const { event, data: eventData } = message.data;
+
+        if (event === 'create') {
+          setData(prev => [...eventData, ...prev]);
+        } else if (event === 'update') {
+          setData(prev => prev.map(item => {
+            const updated = eventData.find(u => u.id === item.id);
+            return updated || item;
+          }));
+        } else if (event === 'delete') {
+          setData(prev => prev.filter(item => !eventData.includes(item.id)));
+        }
+      }
+
+      if (message.status === 'error') {
+        setError(message.error);
+      }
+    };
+
+    ws.onerror = (err) => {
+      setError(err);
+    };
+
+    ws.onclose = () => {
+      setConnected(false);
+    };
+
+    return () => {
+      ws.send(JSON.stringify({
+        type: 'unsubscribe',
+        uid: subscriptionId
+      }));
+      ws.close();
+    };
+  }, [collection, JSON.stringify(query)]);
+
+  return { data, error, connected };
+}
+
+// Usage
+function ArticlesList() {
+  const { data: articles, error, connected } = useWebSocketSubscription('articles', {
+    fields: ['id', 'title', 'status'],
+    filter: { status: { _eq: 'published' } }
+  });
+
+  if (error) return <div>Error: {error.message}</div>;
+  if (!connected) return <div>Connecting...</div>;
+
+  return (
+    <ul>
+      {articles.map(article => (
+        <li key={article.id}>
+          {article.title} - {article.status}
+        </li>
+      ))}
+    </ul>
+  );
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Unique Subscription IDs">
+    Always provide unique `uid` values for each subscription to track them independently:
+
+    ```javascript
+    ws.send(JSON.stringify({
+      type: 'subscribe',
+      collection: 'articles',
+      uid: `articles-${Date.now()}` // Unique ID
+    }));
+    ```
+  </Accordion>
+
+  <Accordion title="Request Only Needed Fields">
+    Reduce bandwidth by requesting only the fields you need:
+
+    ```javascript
+    // Good - minimal fields
+    query: {
+      fields: ['id', 'title', 'status']
+    }
+
+    // Avoid - all fields when not needed
+    query: {
+      fields: ['*']
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Filter at the Source">
+    Use filter queries instead of filtering in the client:
+
+    ```javascript
+    // Good - server-side filtering
+    query: {
+      filter: { status: { _eq: 'published' } }
+    }
+
+    // Avoid - receiving all updates and filtering client-side
+    ```
+  </Accordion>
+
+  <Accordion title="Unsubscribe When Done">
+    Always unsubscribe when you no longer need updates:
+
+    ```javascript
+    // In React useEffect cleanup
+    return () => {
+      ws.send(JSON.stringify({
+        type: 'unsubscribe',
+        uid: subscriptionId
+      }));
+    };
+    ```
+  </Accordion>
+
+  <Accordion title="Handle Reconnection">
+    Re-establish subscriptions after reconnecting:
+
+    ```javascript
+    function resubscribe() {
+      activeSubscriptions.forEach(sub => {
+        ws.send(JSON.stringify(sub));
+      });
+    }
+
+    ws.onopen = () => {
+      authenticate();
+      resubscribe();
+    };
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="No Updates Received">
+    Verify:
+    - The subscription was successful (received `init` event)
+    - You have read permissions for the collection
+    - Items match your filter criteria
+    - The WebSocket connection is still active
+  </Accordion>
+
+  <Accordion title="Permission Errors">
+    Ensure you have the correct permissions:
+    
+    ```json
+    {
+      "error": {
+        "code": "FORBIDDEN",
+        "message": "You don't have permission to access this collection."
+      }
+    }
+    ```
+    
+    Check your role's read permissions for the collection.
+  </Accordion>
+
+  <Accordion title="Invalid Collection Error">
+    Make sure the collection exists and is accessible:
+    
+    ```json
+    {
+      "error": {
+        "code": "INVALID_COLLECTION",
+        "message": "The provided collection does not exist or is not accessible."
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Cannot Subscribe to Specific Item">
+    Some system collections don't support item-level subscriptions:
+    
+    ```javascript
+    // This will fail for directus_fields and directus_relations
+    ws.send(JSON.stringify({
+      type: 'subscribe',
+      collection: 'directus_fields',
+      item: 123 // Not allowed
+    }));
+    
+    // Subscribe to the whole collection instead
+    ws.send(JSON.stringify({
+      type: 'subscribe',
+      collection: 'directus_fields'
+    }));
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="WebSocket Overview" icon="plug" href="/api/websocket/overview">
+    Learn about WebSocket connection and authentication
+  </Card>
+  
+  <Card title="SDK Real-time" icon="code" href="/api/sdk/real-time">
+    Use the Directus SDK for easier WebSocket management
+  </Card>
+  
+  <Card title="GraphQL Subscriptions" icon="diagram-project" href="/api/graphql/subscriptions">
+    Real-time updates using GraphQL
+  </Card>
+  
+  <Card title="Query Filters" icon="filter" href="/api/query">
+    Learn about filter syntax and query parameters
+  </Card>
+</CardGroup>

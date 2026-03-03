@@ -1,0 +1,447 @@
+---
+title: Relationships
+description: Relationships connect data across collections, enabling complex data models through many-to-one, one-to-many, many-to-many, and polymorphic associations.
+---
+
+## What are Relationships?
+
+Relationships define how data in one collection relates to data in another collection. They enable you to build complex, normalized data models by linking records together, similar to foreign keys and JOINs in SQL databases.
+
+<Note>
+Directus supports all standard relational patterns: Many-to-One (M2O), One-to-Many (O2M), Many-to-Many (M2M), and Many-to-Any (M2A) polymorphic relationships.
+</Note>
+
+## Relationship Structure
+
+Each relationship consists of two parts:
+
+```typescript
+// From ~/workspace/source/packages/types/src/relations.ts:21-27
+type Relation = {
+  collection: string;              // The "many" side collection
+  field: string;                   // The "many" side field
+  related_collection: string | null;  // The "one" side collection
+  schema: ForeignKey | null;       // Database foreign key constraint
+  meta: RelationMeta | null;       // Directus relationship metadata
+}
+```
+
+### Relationship Metadata
+
+```typescript
+// From ~/workspace/source/packages/types/src/relations.ts:3-19
+type RelationMeta = {
+  id: number;
+  
+  many_collection: string;         // Collection containing the foreign key
+  many_field: string;              // Foreign key field
+  
+  one_collection: string | null;   // Related collection
+  one_field: string | null;        // Reverse relationship field (virtual)
+  one_collection_field: string | null;  // For M2A relationships
+  one_allowed_collections: string[] | null;  // Allowed collections for M2A
+  one_deselect_action: 'nullify' | 'delete';  // Action on deselect
+  
+  junction_field: string | null;   // For M2M junction collections
+  sort_field: string | null;       // Field for manual sorting
+}
+```
+
+## Many-to-One (M2O)
+
+The most common relationship type, where many items in one collection relate to a single item in another.
+
+### Example: Articles → Authors
+
+```json
+{
+  "collection": "articles",
+  "field": "author",
+  "related_collection": "authors",
+  "meta": {
+    "many_collection": "articles",
+    "many_field": "author",
+    "one_collection": "authors",
+    "one_field": null
+  },
+  "schema": {
+    "table": "articles",
+    "column": "author",
+    "foreign_key_table": "authors",
+    "foreign_key_column": "id"
+  }
+}
+```
+
+In this example:
+- Each article has one author
+- Each author can have many articles
+- The `author` field in `articles` stores the author's ID
+- A foreign key constraint ensures referential integrity
+
+### Usage in Items
+
+```json
+// Create article with M2O reference
+{
+  "title": "Introduction to Directus",
+  "author": 5,  // Reference to author ID
+  "content": "..."
+}
+
+// Create article with nested author
+{
+  "title": "Introduction to Directus",
+  "author": {
+    "first_name": "John",
+    "last_name": "Doe",
+    "email": "john@example.com"
+  }
+}
+```
+
+## One-to-Many (O2M)
+
+The inverse of M2O, providing a virtual field to access related items.
+
+### Example: Authors → Articles
+
+```json
+{
+  "collection": "articles",
+  "field": "author",
+  "related_collection": "authors",
+  "meta": {
+    "many_collection": "articles",
+    "many_field": "author",
+    "one_collection": "authors",
+    "one_field": "articles"  // Virtual field on authors
+  }
+}
+```
+
+In this example:
+- The `articles` field on `authors` is virtual (alias field)
+- No database column exists for `articles` on the authors table
+- Querying `authors.articles` returns all articles by that author
+
+### Usage in Queries
+
+```http
+GET /items/authors/5?fields=*,articles.*
+```
+
+Response:
+
+```json
+{
+  "id": 5,
+  "first_name": "John",
+  "last_name": "Doe",
+  "articles": [
+    { "id": 1, "title": "Article 1" },
+    { "id": 2, "title": "Article 2" }
+  ]
+}
+```
+
+## Many-to-Many (M2M)
+
+Connects items from two collections through a junction (pivot) collection.
+
+### Example: Articles ↔ Tags
+
+```
+articles ← articles_tags → tags
+```
+
+Requires three collections:
+
+1. **articles** - Original collection
+2. **tags** - Related collection
+3. **articles_tags** - Junction collection
+
+Junction collection structure:
+
+```json
+{
+  "collection": "articles_tags",
+  "fields": [
+    {
+      "field": "id",
+      "type": "integer",
+      "schema": { "is_primary_key": true }
+    },
+    {
+      "field": "articles_id",
+      "type": "integer"
+    },
+    {
+      "field": "tags_id",
+      "type": "integer"
+    }
+  ]
+}
+```
+
+Relationship configuration:
+
+```json
+// M2O from junction to articles
+{
+  "collection": "articles_tags",
+  "field": "articles_id",
+  "related_collection": "articles"
+}
+
+// M2O from junction to tags
+{
+  "collection": "articles_tags",
+  "field": "tags_id",
+  "related_collection": "tags"
+}
+
+// O2M from articles to junction (virtual)
+{
+  "collection": "articles_tags",
+  "field": "articles_id",
+  "meta": {
+    "one_collection": "articles",
+    "one_field": "tags",
+    "junction_field": "tags_id"
+  }
+}
+```
+
+### Usage in Items
+
+```json
+// Create article with M2M tags
+{
+  "title": "Introduction to Directus",
+  "tags": [
+    { "tags_id": 1 },
+    { "tags_id": 2 },
+    { "tags_id": { "name": "New Tag" } }
+  ]
+}
+```
+
+### Query with M2M
+
+```http
+GET /items/articles?fields=*,tags.tags_id.*
+```
+
+Response:
+
+```json
+{
+  "id": 1,
+  "title": "Introduction to Directus",
+  "tags": [
+    { "tags_id": { "id": 1, "name": "Tutorial" } },
+    { "tags_id": { "id": 2, "name": "Beginner" } }
+  ]
+}
+```
+
+## Many-to-Any (M2A)
+
+Polymorphic relationships that can relate to items in multiple different collections.
+
+### Example: Comments on Multiple Collections
+
+```json
+{
+  "collection": "comments",
+  "field": "item",
+  "meta": {
+    "many_collection": "comments",
+    "many_field": "item",
+    "one_collection_field": "collection",  // Stores collection name
+    "one_allowed_collections": ["articles", "products", "pages"]
+  }
+}
+```
+
+The `comments` collection has:
+- `item` - Stores the related item ID
+- `collection` - Stores the collection name
+
+### Usage
+
+```json
+// Comment on an article
+{
+  "content": "Great article!",
+  "collection": "articles",
+  "item": 5
+}
+
+// Comment on a product
+{
+  "content": "Excellent product",
+  "collection": "products",
+  "item": 12
+}
+```
+
+## Creating Relationships
+
+### Via API
+
+```http
+POST /relations
+Content-Type: application/json
+
+{
+  "collection": "articles",
+  "field": "author",
+  "related_collection": "authors",
+  "meta": {
+    "one_field": "articles"
+  },
+  "schema": {
+    "on_delete": "SET NULL"
+  }
+}
+```
+
+From the source code (`~/workspace/source/api/src/services/relations.ts:191-200`), creating a relationship:
+
+1. Validates required fields (`collection`, `field`)
+2. Creates/updates the foreign key constraint in the database
+3. Saves relationship metadata to `directus_relations`
+4. Optionally creates reverse O2M virtual field
+
+### Foreign Key Actions
+
+```json
+{
+  "schema": {
+    "on_delete": "CASCADE",  // or "SET NULL", "RESTRICT", "NO ACTION"
+    "on_update": "CASCADE"
+  }
+}
+```
+
+- **CASCADE** - Delete/update related items
+- **SET NULL** - Set foreign key to NULL
+- **RESTRICT** - Prevent deletion if related items exist
+- **NO ACTION** - Database-specific default
+
+## Querying Relationships
+
+### Field Expansion
+
+```http
+GET /items/articles?fields=id,title,author.first_name,author.last_name
+```
+
+### Deep Nesting
+
+```http
+GET /items/articles?fields=*,author.*,author.role.*,comments.user.*
+```
+
+### Filtering on Relationships
+
+```http
+GET /items/articles?filter[author][role][name][_eq]=Editor
+```
+
+### Aggregation
+
+```http
+GET /items/authors?fields=*,articles.count
+```
+
+## Sorting in Relationships
+
+For M2M and O2M relationships, enable manual sorting:
+
+```json
+{
+  "meta": {
+    "sort_field": "sort"
+  }
+}
+```
+
+Add a `sort` field to the junction collection:
+
+```json
+{
+  "field": "sort",
+  "type": "integer",
+  "schema": {
+    "default_value": 0
+  }
+}
+```
+
+## Deleting Relationships
+
+```http
+DELETE /relations/articles/author
+```
+
+From the source code (`~/workspace/source/api/src/services/fields.ts:722-768`), deleting a relationship:
+
+1. Removes the virtual O2M field if it exists
+2. Drops the foreign key constraint from the database
+3. Deletes the relationship metadata
+4. May also delete related M2O field depending on configuration
+
+<Warning>
+Deleting a relationship removes the foreign key constraint and may orphan data. Ensure you handle related data appropriately.
+</Warning>
+
+## Common Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Content Authoring" icon="pen">
+    Link articles to authors, categories, and tags with M2O and M2M relationships for rich content organization.
+  </Card>
+  
+  <Card title="E-commerce" icon="cart-shopping">
+    Connect products to categories, brands, and variants; orders to customers and products with complex relationship chains.
+  </Card>
+  
+  <Card title="User Management" icon="users">
+    Associate users with roles, teams, and departments through hierarchical and many-to-many relationships.
+  </Card>
+  
+  <Card title="Media Libraries" icon="photo-film">
+    Relate images and files to multiple content types using M2A relationships for flexible asset management.
+  </Card>
+</CardGroup>
+
+## Best Practices
+
+<Tip>
+**Use Foreign Keys**: Always create foreign key constraints for data integrity and performance.
+</Tip>
+
+<Tip>
+**Name Junctions Clearly**: Use descriptive names like `articles_tags` or `users_roles` for junction collections.
+</Tip>
+
+<Tip>
+**Set Delete Actions**: Choose appropriate `on_delete` actions (CASCADE, SET NULL) based on your data requirements.
+</Tip>
+
+<Tip>
+**Optimize Queries**: Use field selection to limit nested data and prevent over-fetching.
+</Tip>
+
+<Tip>
+**Index Foreign Keys**: Ensure foreign key fields are indexed for efficient JOIN operations.
+</Tip>
+
+## Related Concepts
+
+- **[Collections](/core-concepts/collections)** - Tables that contain related items
+- **[Fields](/core-concepts/fields)** - Foreign key fields that store relationships
+- **[Items](/core-concepts/items)** - Records that are linked through relationships

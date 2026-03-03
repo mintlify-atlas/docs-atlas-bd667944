@@ -1,0 +1,509 @@
+---
+title: "SDK Items Operations"
+description: "Create, read, update, and delete items in Directus collections"
+---
+
+## Overview
+
+Items are the individual records within your collections. The SDK provides a comprehensive set of operations for working with items, including filtering, sorting, field selection, and nested relations.
+
+## Read Operations
+
+### Read Multiple Items
+
+Retrieve a list of items from a collection:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { createDirectus, rest, readItems } from '@directus/sdk';
+
+const client = createDirectus<Schema>('https://your-directus-url.com')
+  .with(rest());
+
+// Read all items
+const articles = await client.request(
+  readItems('articles')
+);
+
+// With query parameters
+const filteredArticles = await client.request(
+  readItems('articles', {
+    fields: ['id', 'title', 'status'],
+    filter: {
+      status: { _eq: 'published' },
+    },
+    limit: 10,
+    sort: ['-date_created'],
+  })
+);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { createDirectus, rest, readItems } from '@directus/sdk';
+
+const client = createDirectus('https://your-directus-url.com')
+  .with(rest());
+
+const articles = await client.request(
+  readItems('articles', {
+    fields: ['id', 'title', 'status'],
+    filter: {
+      status: { _eq: 'published' },
+    },
+    limit: 10,
+  })
+);
+```
+  </Tab>
+</Tabs>
+
+### Read Single Item
+
+Retrieve a specific item by its primary key:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { readItem } from '@directus/sdk';
+
+const article = await client.request(
+  readItem('articles', 1)
+);
+
+// With specific fields
+const articleWithFields = await client.request(
+  readItem('articles', 1, {
+    fields: ['id', 'title', 'author.name'],
+  })
+);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { readItem } from '@directus/sdk';
+
+const article = await client.request(
+  readItem('articles', 1, {
+    fields: ['id', 'title', 'author.name'],
+  })
+);
+```
+  </Tab>
+</Tabs>
+
+## Create Operations
+
+### Create Single Item
+
+Create a new item in a collection:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { createItem } from '@directus/sdk';
+
+const newArticle = await client.request(
+  createItem('articles', {
+    title: 'New Article',
+    content: 'Article content here',
+    status: 'draft',
+  })
+);
+
+console.log(newArticle.id);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { createItem } from '@directus/sdk';
+
+const newArticle = await client.request(
+  createItem('articles', {
+    title: 'New Article',
+    content: 'Article content here',
+    status: 'draft',
+  })
+);
+```
+  </Tab>
+</Tabs>
+
+### Create Multiple Items
+
+Create multiple items at once:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { createItems } from '@directus/sdk';
+
+const newArticles = await client.request(
+  createItems('articles', [
+    {
+      title: 'Article 1',
+      content: 'Content 1',
+    },
+    {
+      title: 'Article 2',
+      content: 'Content 2',
+    },
+  ])
+);
+
+console.log(`Created ${newArticles.length} articles`);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { createItems } from '@directus/sdk';
+
+const newArticles = await client.request(
+  createItems('articles', [
+    { title: 'Article 1', content: 'Content 1' },
+    { title: 'Article 2', content: 'Content 2' },
+  ])
+);
+```
+  </Tab>
+</Tabs>
+
+## Update Operations
+
+### Update Single Item
+
+Update an existing item by its primary key:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { updateItem } from '@directus/sdk';
+
+const updatedArticle = await client.request(
+  updateItem('articles', 1, {
+    title: 'Updated Title',
+    status: 'published',
+  })
+);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { updateItem } from '@directus/sdk';
+
+const updatedArticle = await client.request(
+  updateItem('articles', 1, {
+    title: 'Updated Title',
+    status: 'published',
+  })
+);
+```
+  </Tab>
+</Tabs>
+
+### Update Multiple Items
+
+Update multiple items using an array of keys or a query:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { updateItems } from '@directus/sdk';
+
+// Update by keys
+const updated = await client.request(
+  updateItems('articles', [1, 2, 3], {
+    status: 'published',
+  })
+);
+
+// Update by query
+const updatedByQuery = await client.request(
+  updateItems(
+    'articles',
+    {
+      filter: {
+        status: { _eq: 'draft' },
+      },
+    },
+    {
+      status: 'review',
+    }
+  )
+);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { updateItems } from '@directus/sdk';
+
+const updated = await client.request(
+  updateItems('articles', [1, 2, 3], {
+    status: 'published',
+  })
+);
+```
+  </Tab>
+</Tabs>
+
+### Batch Update
+
+Update multiple items with different data:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { updateItemsBatch } from '@directus/sdk';
+
+const updated = await client.request(
+  updateItemsBatch('articles', [
+    {
+      id: 1,
+      title: 'Updated Article 1',
+    },
+    {
+      id: 2,
+      title: 'Updated Article 2',
+    },
+  ])
+);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { updateItemsBatch } from '@directus/sdk';
+
+const updated = await client.request(
+  updateItemsBatch('articles', [
+    { id: 1, title: 'Updated Article 1' },
+    { id: 2, title: 'Updated Article 2' },
+  ])
+);
+```
+  </Tab>
+</Tabs>
+
+## Delete Operations
+
+### Delete Single Item
+
+Delete an item by its primary key:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { deleteItem } from '@directus/sdk';
+
+await client.request(
+  deleteItem('articles', 1)
+);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { deleteItem } from '@directus/sdk';
+
+await client.request(deleteItem('articles', 1));
+```
+  </Tab>
+</Tabs>
+
+### Delete Multiple Items
+
+Delete multiple items using keys or a query:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { deleteItems } from '@directus/sdk';
+
+// Delete by keys
+await client.request(
+  deleteItems('articles', [1, 2, 3])
+);
+
+// Delete by query
+await client.request(
+  deleteItems('articles', {
+    filter: {
+      status: { _eq: 'draft' },
+      date_created: { _lt: '$NOW(-30 days)' },
+    },
+  })
+);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { deleteItems } from '@directus/sdk';
+
+await client.request(
+  deleteItems('articles', [1, 2, 3])
+);
+```
+  </Tab>
+</Tabs>
+
+## Query Parameters
+
+### Fields Selection
+
+Select specific fields to return:
+
+```typescript
+const articles = await client.request(
+  readItems('articles', {
+    fields: ['id', 'title', 'author.name', 'author.email'],
+  })
+);
+```
+
+### Filtering
+
+Filter items using various operators:
+
+```typescript
+const articles = await client.request(
+  readItems('articles', {
+    filter: {
+      status: { _eq: 'published' },
+      views: { _gte: 1000 },
+      title: { _contains: 'Tutorial' },
+      _and: [
+        {
+          date_created: { _gte: '$NOW(-7 days)' },
+        },
+      ],
+    },
+  })
+);
+```
+
+### Sorting
+
+Sort items by one or more fields:
+
+```typescript
+const articles = await client.request(
+  readItems('articles', {
+    sort: ['-date_created', 'title'], // - prefix for descending
+  })
+);
+```
+
+### Pagination
+
+```typescript
+const articles = await client.request(
+  readItems('articles', {
+    limit: 20,
+    offset: 40, // Skip first 40 items
+    page: 3, // Alternative to offset
+  })
+);
+```
+
+### Deep Filtering
+
+Filter on nested relations:
+
+```typescript
+const articles = await client.request(
+  readItems('articles', {
+    filter: {
+      'author.department': { _eq: 'Engineering' },
+    },
+    fields: ['*', 'author.*'],
+  })
+);
+```
+
+### Search
+
+Full-text search across fields:
+
+```typescript
+const articles = await client.request(
+  readItems('articles', {
+    search: 'directus tutorial',
+  })
+);
+```
+
+## Type Signatures
+
+```typescript
+// Read operations
+function readItems<Schema, Collection, TQuery>(
+  collection: Collection,
+  query?: TQuery
+): RestCommand<Item[], Schema>;
+
+function readItem<Schema, Collection, TQuery>(
+  collection: Collection,
+  key: string | number,
+  query?: TQuery
+): RestCommand<Item, Schema>;
+
+// Create operations
+function createItem<Schema, Collection, TQuery>(
+  collection: Collection,
+  item: NestedPartial<Item>,
+  query?: TQuery
+): RestCommand<Item, Schema>;
+
+function createItems<Schema, Collection, TQuery>(
+  collection: Collection,
+  items: NestedPartial<Item>[],
+  query?: TQuery
+): RestCommand<Item[], Schema>;
+
+// Update operations
+function updateItem<Schema, Collection, TQuery>(
+  collection: Collection,
+  key: string | number,
+  item: NestedPartial<Item>,
+  query?: TQuery
+): RestCommand<Item, Schema>;
+
+function updateItems<Schema, Collection, TQuery>(
+  collection: Collection,
+  keysOrQuery: (string | number)[] | Query,
+  item: NestedPartial<Item>,
+  query?: TQuery
+): RestCommand<Item[], Schema>;
+
+// Delete operations
+function deleteItem<Schema, Collection>(
+  collection: Collection,
+  key: string | number
+): RestCommand<void, Schema>;
+
+function deleteItems<Schema, Collection>(
+  collection: Collection,
+  keysOrQuery: (string | number)[] | Query
+): RestCommand<void, Schema>;
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+
+<Card title="Collections" icon="layer-group" href="/api/sdk/collections">
+  Work with collection metadata
+</Card>
+
+<Card title="Files" icon="file" href="/api/sdk/files">
+  Upload and manage files
+</Card>
+
+<Card title="Users" icon="users" href="/api/sdk/users">
+  Manage users and permissions
+</Card>
+
+<Card title="Real-time" icon="bolt" href="/api/sdk/real-time">
+  Subscribe to real-time item updates
+</Card>
+
+</CardGroup>

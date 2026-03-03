@@ -1,0 +1,604 @@
+---
+title: "SDK Real-time Operations"
+description: "Subscribe to real-time updates using WebSocket connections"
+---
+
+## Overview
+
+The Directus SDK provides real-time functionality through WebSocket connections, allowing you to subscribe to live updates for collections, send custom messages, and handle WebSocket events.
+
+## Setup
+
+### Basic Real-time Client
+
+Create a client with real-time capabilities:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { createDirectus, realtime } from '@directus/sdk';
+
+const client = createDirectus<Schema>('https://your-directus-url.com')
+  .with(realtime());
+
+// Connect to WebSocket
+await client.connect();
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { createDirectus, realtime } from '@directus/sdk';
+
+const client = createDirectus('https://your-directus-url.com')
+  .with(realtime());
+
+await client.connect();
+```
+  </Tab>
+</Tabs>
+
+### Authentication Modes
+
+The `realtime()` composable supports three authentication modes:
+
+- **`handshake`** - Authenticate during connection (default, recommended)
+- **`strict`** - Pass token in URL query parameter
+- **`public`** - No authentication (for public data)
+
+#### Handshake Mode (Recommended)
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { createDirectus, realtime, authentication } from '@directus/sdk';
+
+const client = createDirectus<Schema>('https://your-directus-url.com')
+  .with(authentication('json'))
+  .with(realtime({
+    authMode: 'handshake',
+  }));
+
+// Login first
+await client.login({
+  email: 'user@example.com',
+  password: 'password',
+});
+
+// Then connect WebSocket
+await client.connect();
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { createDirectus, realtime, authentication } from '@directus/sdk';
+
+const client = createDirectus('https://your-directus-url.com')
+  .with(authentication('json'))
+  .with(realtime({ authMode: 'handshake' }));
+
+await client.login({
+  email: 'user@example.com',
+  password: 'password',
+});
+
+await client.connect();
+```
+  </Tab>
+</Tabs>
+
+#### Public Mode
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+const client = createDirectus<Schema>('https://your-directus-url.com')
+  .with(realtime({
+    authMode: 'public',
+  }));
+
+await client.connect();
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+const client = createDirectus('https://your-directus-url.com')
+  .with(realtime({ authMode: 'public' }));
+
+await client.connect();
+```
+  </Tab>
+</Tabs>
+
+## Subscriptions
+
+### Subscribe to Collection Updates
+
+Subscribe to real-time updates for a collection:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+const { subscription, unsubscribe } = await client.subscribe('articles', {
+  query: {
+    fields: ['id', 'title', 'status'],
+    filter: {
+      status: { _eq: 'published' },
+    },
+  },
+});
+
+// Listen for updates
+for await (const message of subscription) {
+  console.log('Event:', message.event); // 'init', 'create', 'update', 'delete'
+  console.log('Data:', message.data);
+}
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+const { subscription, unsubscribe } = await client.subscribe('articles', {
+  query: {
+    fields: ['id', 'title', 'status'],
+  },
+});
+
+for await (const message of subscription) {
+  console.log('Event:', message.event);
+  console.log('Data:', message.data);
+}
+```
+  </Tab>
+</Tabs>
+
+### Subscription Events
+
+Subscriptions emit different event types:
+
+- **`init`** - Initial data when subscription starts
+- **`create`** - New item created
+- **`update`** - Existing item updated
+- **`delete`** - Item deleted
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+const { subscription, unsubscribe } = await client.subscribe('articles');
+
+for await (const message of subscription) {
+  switch (message.event) {
+    case 'init':
+      console.log('Initial data:', message.data);
+      break;
+    case 'create':
+      console.log('New item created:', message.data);
+      break;
+    case 'update':
+      console.log('Item updated:', message.data);
+      break;
+    case 'delete':
+      console.log('Item deleted:', message.data);
+      break;
+  }
+}
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+const { subscription, unsubscribe } = await client.subscribe('articles');
+
+for await (const message of subscription) {
+  if (message.event === 'create') {
+    console.log('New item:', message.data);
+  } else if (message.event === 'update') {
+    console.log('Updated item:', message.data);
+  }
+}
+```
+  </Tab>
+</Tabs>
+
+### Unsubscribe
+
+Stop listening to updates:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+const { subscription, unsubscribe } = await client.subscribe('articles');
+
+// Listen for a while...
+let count = 0;
+for await (const message of subscription) {
+  console.log(message);
+  count++;
+  
+  if (count >= 10) {
+    unsubscribe();
+    break;
+  }
+}
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+const { subscription, unsubscribe } = await client.subscribe('articles');
+
+// Later...
+unsubscribe();
+```
+  </Tab>
+</Tabs>
+
+## WebSocket Events
+
+### Listen to WebSocket Events
+
+Handle low-level WebSocket events:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+// Connection opened
+const stopOpen = client.onWebSocket('open', (event) => {
+  console.log('WebSocket connected');
+});
+
+// Connection closed
+const stopClose = client.onWebSocket('close', (event) => {
+  console.log('WebSocket closed');
+});
+
+// Connection error
+const stopError = client.onWebSocket('error', (event) => {
+  console.error('WebSocket error:', event);
+});
+
+// Message received
+const stopMessage = client.onWebSocket('message', (message) => {
+  console.log('Raw message:', message);
+});
+
+// Stop listening
+stopOpen();
+stopClose();
+stopError();
+stopMessage();
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+const stopOpen = client.onWebSocket('open', () => {
+  console.log('Connected');
+});
+
+const stopMessage = client.onWebSocket('message', (message) => {
+  console.log('Message:', message);
+});
+```
+  </Tab>
+</Tabs>
+
+## Send Custom Messages
+
+### Send Messages
+
+Send custom messages through the WebSocket:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+// Send ping message
+client.sendMessage({ type: 'ping' });
+
+// Send custom message
+client.sendMessage({
+  type: 'custom',
+  data: { foo: 'bar' },
+});
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+client.sendMessage({ type: 'ping' });
+```
+  </Tab>
+</Tabs>
+
+### Ping/Pong Example
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+const stop = client.onWebSocket('message', (message) => {
+  if ('type' in message && message.type === 'pong') {
+    console.log('PONG received');
+    stop();
+  }
+});
+
+client.sendMessage({ type: 'ping' });
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+const stop = client.onWebSocket('message', (message) => {
+  if (message.type === 'pong') {
+    console.log('PONG received');
+  }
+});
+
+client.sendMessage({ type: 'ping' });
+```
+  </Tab>
+</Tabs>
+
+## Connection Management
+
+### Connect
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+await client.connect();
+console.log('WebSocket connected');
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+await client.connect();
+```
+  </Tab>
+</Tabs>
+
+### Disconnect
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+client.disconnect();
+console.log('WebSocket disconnected');
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+client.disconnect();
+```
+  </Tab>
+</Tabs>
+
+### Check Connection Status
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+const isConnected = await client.isConnected();
+console.log('Connected:', isConnected);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+const isConnected = await client.isConnected();
+```
+  </Tab>
+</Tabs>
+
+## Configuration
+
+### Advanced Configuration
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+const client = createDirectus<Schema>('https://your-directus-url.com')
+  .with(realtime({
+    authMode: 'handshake',
+    
+    // Heartbeat ping/pong
+    heartbeat: true, // Default: true
+    
+    // Debug logging
+    debug: true, // Default: false
+    
+    // Connection timeout
+    connect: {
+      timeout: 10000, // 10 seconds (default)
+    },
+    
+    // Reconnection settings
+    reconnect: {
+      delay: 1000, // 1 second delay (default)
+      retries: 10, // Max retry attempts (default)
+    },
+  }));
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+const client = createDirectus('https://your-directus-url.com')
+  .with(realtime({
+    authMode: 'public',
+    heartbeat: true,
+    debug: true,
+  }));
+```
+  </Tab>
+</Tabs>
+
+### Custom WebSocket URL
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+const client = createDirectus<Schema>('https://your-directus-url.com')
+  .with(realtime({
+    url: 'wss://custom-websocket-url.com',
+  }));
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+const client = createDirectus('https://your-directus-url.com')
+  .with(realtime({
+    url: 'wss://custom-websocket-url.com',
+  }));
+```
+  </Tab>
+</Tabs>
+
+## Full Example
+
+Complete example with authentication and subscriptions:
+
+<Tabs>
+  <Tab title="TypeScript">
+```typescript
+import { createDirectus, authentication, realtime } from '@directus/sdk';
+
+interface Article {
+  id: number;
+  title: string;
+  status: string;
+}
+
+interface Schema {
+  articles: Article[];
+}
+
+const client = createDirectus<Schema>('https://your-directus-url.com')
+  .with(authentication('json'))
+  .with(realtime({
+    authMode: 'handshake',
+    debug: true,
+  }));
+
+async function main() {
+  // Login
+  await client.login({
+    email: 'user@example.com',
+    password: 'password',
+  });
+
+  // Connect WebSocket
+  await client.connect();
+
+  // Subscribe to articles
+  const { subscription, unsubscribe } = await client.subscribe('articles', {
+    query: {
+      fields: ['*'],
+      filter: {
+        status: { _eq: 'published' },
+      },
+    },
+  });
+
+  // Listen for updates
+  console.log('Listening for updates...');
+  
+  for await (const message of subscription) {
+    console.log(`[${message.event}]`, message.data);
+  }
+}
+
+main().catch(console.error);
+```
+  </Tab>
+  <Tab title="JavaScript">
+```javascript
+import { createDirectus, authentication, realtime } from '@directus/sdk';
+
+const client = createDirectus('https://your-directus-url.com')
+  .with(authentication('json'))
+  .with(realtime({ authMode: 'handshake' }));
+
+await client.login({
+  email: 'user@example.com',
+  password: 'password',
+});
+
+await client.connect();
+
+const { subscription } = await client.subscribe('articles');
+
+for await (const message of subscription) {
+  console.log(message);
+}
+```
+  </Tab>
+</Tabs>
+
+## Type Signatures
+
+```typescript
+// Real-time configuration
+interface WebSocketConfig {
+  authMode?: 'handshake' | 'strict' | 'public';
+  url?: string;
+  heartbeat?: boolean;
+  debug?: boolean;
+  connect?: {
+    timeout?: number;
+  };
+  reconnect?: {
+    delay?: number;
+    retries?: number;
+  };
+}
+
+// Subscription options
+interface SubscribeOptions<Schema, Collection> {
+  query?: Query<Schema, Schema[Collection]>;
+  uid?: string;
+}
+
+// Subscription output
+type SubscriptionOutput = {
+  type: 'subscription';
+  event: 'init' | 'create' | 'update' | 'delete';
+  data: Item | Item[];
+  uid: string;
+};
+
+// WebSocket client methods
+interface WebSocketClient<Schema> {
+  connect(): Promise<WebSocket>;
+  disconnect(): void;
+  isConnected(): Promise<boolean>;
+  
+  subscribe<Collection>(
+    collection: Collection,
+    options?: SubscribeOptions<Schema, Collection>
+  ): Promise<{
+    subscription: AsyncGenerator<SubscriptionOutput>;
+    unsubscribe: () => void;
+  }>;
+  
+  sendMessage(message: string | Record<string, any>): void;
+  
+  onWebSocket(
+    event: 'open' | 'close' | 'error' | 'message',
+    callback: (event: any) => void
+  ): () => void;
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+
+<Card title="Items Operations" icon="database" href="/api/sdk/items">
+  Perform CRUD operations on items
+</Card>
+
+<Card title="Authentication" icon="lock" href="/api/sdk/authentication">
+  Authenticate for protected subscriptions
+</Card>
+
+<Card title="WebSocket API" icon="plug" href="/api/websocket">
+  Learn about WebSocket protocol details
+</Card>
+
+<Card title="Flows" icon="diagram-project" href="/api/flows">
+  Trigger flows from real-time events
+</Card>
+
+</CardGroup>

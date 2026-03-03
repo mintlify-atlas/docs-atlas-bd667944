@@ -1,0 +1,198 @@
+---
+title: Directus Cloud Deployment
+description: Deploy Directus on Directus Cloud - the fastest way to get started with managed infrastructure, auto-scaling, and global CDN.
+---
+
+Directus Cloud is the official managed hosting platform for Directus, providing a fully-managed solution with everything you need to run Directus in production.
+
+## Overview
+
+Directus Cloud provides:
+
+- Fully managed Directus instances with automatic updates
+- PostgreSQL database included and configured
+- File storage with global CDN
+- Auto-scaling based on your traffic
+- Automatic backups and disaster recovery
+- 99.9% uptime SLA
+- Global regions for optimal performance
+
+## Getting Started
+
+<Steps>
+  <Step title="Create an Account">
+    Visit [Directus Cloud](https://directus.cloud) and create a new account.
+  </Step>
+
+  <Step title="Create a Project">
+    From the Cloud dashboard, click "Create Project" and select your desired:
+    - Project name
+    - Region (choose closest to your users)
+    - Plan tier based on your needs
+  </Step>
+
+  <Step title="Configure Your Project">
+    Your project will be provisioned in approximately 90 seconds. During setup:
+    - Database is automatically configured
+    - Storage is connected
+    - CDN is enabled globally
+  </Step>
+
+  <Step title="Access Your Instance">
+    Once provisioned, you'll receive:
+    - Your Directus URL (e.g., `https://your-project.directus.app`)
+    - Admin credentials
+    - Database connection details
+  </Step>
+</Steps>
+
+## Pricing
+
+Directus Cloud offers flexible pricing starting at $15/month:
+
+- **Starter**: Perfect for small projects and development
+- **Team**: For growing teams with increased limits
+- **Business**: Enterprise features and dedicated support
+- **Enterprise**: Custom infrastructure and SLA
+
+Visit [directus.io/pricing](https://directus.io/pricing) for current pricing details.
+
+## Features
+
+### Automatic Scaling
+
+Directus Cloud automatically scales your infrastructure based on demand:
+
+- Compute resources scale with traffic
+- Storage expands as needed
+- Database connections optimized automatically
+
+### Monitoring
+
+Built-in monitoring dashboard provides:
+
+- Real-time performance metrics
+- Request analytics
+- Error tracking and logging
+- Resource usage insights
+
+### Backups
+
+Automatic backups ensure data safety:
+
+- Daily automated backups
+- Point-in-time recovery
+- One-click restore functionality
+- Backup retention based on plan
+
+### Security
+
+- Automatic SSL/TLS certificates
+- DDoS protection
+- SOC 2 Type II certified infrastructure
+- GDPR compliant
+
+## Managing Your Project
+
+### Environment Variables
+
+Configure your Directus instance through the Cloud dashboard:
+
+1. Navigate to your project settings
+2. Click "Environment Variables"
+3. Add or modify variables
+4. Click "Save and Restart"
+
+Common environment variables:
+
+```bash
+# Email configuration
+EMAIL_TRANSPORT=smtp
+EMAIL_SMTP_HOST=smtp.example.com
+EMAIL_SMTP_PORT=587
+EMAIL_SMTP_USER=your-email@example.com
+EMAIL_SMTP_PASSWORD=your-password
+
+# Authentication
+AUTH_PROVIDERS=google,github
+
+# File storage limits
+FILES_MAX_UPLOAD_SIZE=100mb
+```
+
+### Custom Domains
+
+Connect your own domain:
+
+1. Go to project settings → Domains
+2. Add your custom domain
+3. Update your DNS records with provided CNAME
+4. SSL certificate is automatically provisioned
+
+### Extensions
+
+Install custom extensions:
+
+1. Upload your extension files via the dashboard
+2. Extensions are automatically loaded on restart
+3. Or connect a Git repository for automatic deployment
+
+## Migration from Self-Hosted
+
+To migrate an existing Directus instance to Cloud:
+
+<Steps>
+  <Step title="Export Your Data">
+    Export your schema and data from your self-hosted instance:
+    ```bash
+    npx directus schema snapshot ./snapshot.yaml
+    ```
+  </Step>
+
+  <Step title="Create Cloud Project">
+    Provision a new Directus Cloud project in your desired region.
+  </Step>
+
+  <Step title="Import Schema">
+    Import your schema snapshot:
+    ```bash
+    npx directus schema apply ./snapshot.yaml
+    ```
+  </Step>
+
+  <Step title="Migrate Data">
+    Export and import your data using the Directus API or database tools.
+  </Step>
+
+  <Step title="Update URLs">
+    Update your application to point to the new Cloud URL.
+  </Step>
+</Steps>
+
+## Support
+
+Directus Cloud includes:
+
+- **Community Support**: Access to Discord and community forums (all plans)
+- **Email Support**: Direct support via email (Team plan and above)
+- **Priority Support**: Guaranteed response times (Business and Enterprise)
+- **Dedicated Support**: Slack/Teams integration and dedicated engineer (Enterprise)
+
+## Limitations
+
+Be aware of plan-specific limitations:
+
+- API requests per month
+- File storage capacity
+- Database size limits
+- Number of team members
+- Custom extension limits
+
+Check your current plan limits in the Cloud dashboard under Usage.
+
+## Resources
+
+- [Directus Cloud Dashboard](https://directus.cloud)
+- [Cloud Documentation](https://docs.directus.io/cloud/)
+- [Status Page](https://status.directus.cloud)
+- [Pricing Details](https://directus.io/pricing)

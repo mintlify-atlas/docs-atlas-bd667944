@@ -1,0 +1,92 @@
+---
+title: Fields
+description: Manage fields in collections
+---
+
+Fields are the columns in your database tables. The Fields API allows you to create and manage fields.
+
+## List Fields
+
+Retrieve all fields in a collection.
+
+```bash
+GET /fields/:collection
+```
+
+**Example:**
+
+```bash
+curl "https://your-directus-instance.com/fields/articles" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+## Get Field
+
+Retrieve a single field.
+
+```bash
+GET /fields/:collection/:field
+```
+
+## Create Field
+
+Create a new field in a collection.
+
+```bash
+POST /fields/:collection
+```
+
+**Request Body:**
+
+```json
+{
+  "field": "excerpt",
+  "type": "text",
+  "meta": {
+    "interface": "input-multiline",
+    "note": "Short description"
+  },
+  "schema": {}
+}
+```
+
+## Update Field
+
+Update field metadata.
+
+```bash
+PATCH /fields/:collection/:field
+```
+
+## Delete Field
+
+Delete a field from a collection.
+
+```bash
+DELETE /fields/:collection/:field
+```
+
+<Warning>
+  Deleting a field removes the database column and all its data permanently.
+</Warning>
+
+## Field Types
+
+- **String types**: `string`, `text`, `uuid`
+- **Number types**: `integer`, `bigInteger`, `float`, `decimal`
+- **Boolean**: `boolean`
+- **Date/Time**: `date`, `time`, `datetime`, `timestamp`
+- **JSON**: `json`
+- **Relational**: `alias` (virtual fields)
+- **Geometry**: `geometry` (with PostGIS)
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Collections" icon="layer-group" href="/api/rest/collections">
+    Manage collections
+  </Card>
+  <Card title="Items" icon="database" href="/api/rest/items">
+    Work with items
+  </Card>
+</CardGroup>

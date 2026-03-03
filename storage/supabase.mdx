@@ -1,0 +1,361 @@
+---
+title: Supabase Storage
+description: Configure Supabase Storage in Directus for PostgreSQL-integrated object storage with built-in authentication.
+---
+
+The Supabase storage driver integrates with Supabase Storage, providing object storage tightly integrated with PostgreSQL and Supabase's authentication system. It's ideal for projects already using Supabase or wanting PostgreSQL-backed storage.
+
+## Installation
+
+The Supabase driver is included by default with Directus via the `@directus/storage-driver-supabase` package.
+
+## Configuration
+
+Configure Supabase storage using environment variables:
+
+```bash
+# Define storage location
+STORAGE_LOCATIONS="supabase"
+
+# Configure Supabase driver
+STORAGE_SUPABASE_DRIVER="supabase"
+STORAGE_SUPABASE_BUCKET="directus-files"
+STORAGE_SUPABASE_SERVICE_ROLE="your-service-role-key"
+STORAGE_SUPABASE_PROJECT_ID="your-project-id"
+```
+
+### Configuration Options
+
+<ParamField path="bucket" type="string" required>
+  The Supabase Storage bucket name where files will be stored.
+</ParamField>
+
+<ParamField path="serviceRole" type="string" required>
+  Supabase service role key for server-side API access with full permissions.
+</ParamField>
+
+<ParamField path="projectId" type="string">
+  Your Supabase project ID. Required unless using custom `endpoint`.
+</ParamField>
+
+<ParamField path="endpoint" type="string">
+  Custom Supabase Storage endpoint URL for self-hosted instances. Default: `https://{projectId}.supabase.co/storage/v1`.
+</ParamField>
+
+<ParamField path="root" type="string">
+  Optional path prefix for organizing files within the bucket.
+</ParamField>
+
+<ParamField path="tus.chunkSize" type="number">
+  Chunk size for resumable uploads in bytes. Default: `262144` (256 KiB).
+</ParamField>
+
+## Authentication
+
+The driver requires a service role key from `/packages/storage-driver-supabase/src/index.ts:48-60`:
+
+1. Get your service role key from Supabase Dashboard > Settings > API
+2. Service role bypasses Row Level Security (RLS)
+3. Keep service role key secret - never expose to clients
+
+## Examples
+
+### Basic Configuration
+
+```bash
+STORAGE_LOCATIONS="supabase"
+STORAGE_SUPABASE_DRIVER="supabase"
+STORAGE_SUPABASE_BUCKET="directus-files"
+STORAGE_SUPABASE_SERVICE_ROLE="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+STORAGE_SUPABASE_PROJECT_ID="abcdefghijklmnop"
+```
+
+### With Root Path
+
+```bash
+STORAGE_LOCATIONS="supabase"
+STORAGE_SUPABASE_DRIVER="supabase"
+STORAGE_SUPABASE_BUCKET="shared-bucket"
+STORAGE_SUPABASE_SERVICE_ROLE="your-service-role-key"
+STORAGE_SUPABASE_PROJECT_ID="your-project-id"
+STORAGE_SUPABASE_ROOT="directus/production"
+```
+
+### Self-Hosted Supabase
+
+```bash
+STORAGE_LOCATIONS="supabase"
+STORAGE_SUPABASE_DRIVER="supabase"
+STORAGE_SUPABASE_BUCKET="directus-files"
+STORAGE_SUPABASE_SERVICE_ROLE="your-service-role-key"
+STORAGE_SUPABASE_ENDPOINT="https://storage.your-domain.com/storage/v1"
+```
+
+### With Custom Chunk Size
+
+```bash
+STORAGE_LOCATIONS="supabase"
+STORAGE_SUPABASE_DRIVER="supabase"
+STORAGE_SUPABASE_BUCKET="directus-files"
+STORAGE_SUPABASE_SERVICE_ROLE="your-service-role-key"
+STORAGE_SUPABASE_PROJECT_ID="your-project-id"
+STORAGE_SUPABASE_TUS__CHUNK_SIZE="524288"  # 512 KiB
+```
+
+## Features
+
+### Resumable Uploads
+
+The Supabase driver supports TUS resumable uploads from `/packages/storage-driver-supabase/src/index.ts:24-301`:
+- Uses tus-js-client library
+- Creates resumable upload sessions
+- Automatic retry on network failures
+- Upload URL preservation for resume capability
+- Supports upsert (overwrite existing files)
+
+### TUS Implementation
+
+From `/packages/storage-driver-supabase/src/index.ts:238-292`:
+- Custom StreamSource for handling Node.js streams
+- Automatic upload URL caching
+- Resume from previous upload using session data
+- Chunk-based progress tracking
+
+### PostgreSQL Integration
+
+Supabase Storage uses PostgreSQL:
+- File metadata stored in PostgreSQL
+- Row Level Security (RLS) support
+- Trigger-based hooks available
+- Transactional consistency
+
+### Authenticated URLs
+
+From `/packages/storage-driver-supabase/src/index.ts:78-80`:
+- Files accessed via authenticated endpoints
+- Service role provides full access
+- Can implement custom RLS policies
+
+## Implementation Details
+
+The Supabase driver (`DriverSupabase` class) from `/packages/storage-driver-supabase/src/index.ts:24-333`:
+
+- Uses `@supabase/storage-js` SDK
+- Custom dirname implementation for path handling from `/packages/storage-driver-supabase/src/index.ts:306-308`
+- Special handling for current directory (empty string) from `/packages/storage-driver-supabase/src/index.ts:74-75`
+- Paginated listing with recursive directory traversal from `/packages/storage-driver-supabase/src/index.ts:169-228`
+
+### List Implementation
+
+From `/packages/storage-driver-supabase/src/index.ts:169-228`:
+- Handles directories vs files (null ID = directory)
+- Recursive directory traversal
+- Search-based filtering
+- Pagination with 1000 item limit
+- Parent directory prefix handling
+
+### StreamSource Extension
+
+From `/packages/storage-driver-supabase/src/index.ts:311-325`:
+- Custom tus-js-client StreamSource
+- Single-chunk stream handling
+- Offset adjustment for chunk boundaries
+- Prevents multiple reads of single chunk
+
+## Best Practices
+
+### Service Role Security
+
+Protect your service role key:
+
+```bash
+# Use secrets management
+export STORAGE_SUPABASE_SERVICE_ROLE="$(cat /run/secrets/supabase_service_role)"
+
+# Never commit to version control
+echo "STORAGE_SUPABASE_SERVICE_ROLE=*" >> .gitignore
+```
+
+### Bucket Configuration
+
+Create and configure your bucket in Supabase Dashboard:
+
+```sql
+-- Create bucket (via SQL or dashboard)
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('directus-files', 'directus-files', false);
+```
+
+### Row Level Security
+
+While service role bypasses RLS, configure policies for direct client access:
+
+```sql
+-- Allow authenticated users to read
+CREATE POLICY "Allow authenticated read"
+ON storage.objects FOR SELECT
+USING (auth.role() = 'authenticated');
+
+-- Service role still has full access
+```
+
+### Public vs Private Buckets
+
+- **Private buckets** - Require authentication for all access
+- **Public buckets** - Allow unauthenticated reads
+
+For Directus, private buckets are recommended with service role access.
+
+### File Paths
+
+From `/packages/storage-driver-supabase/src/index.ts:71-76`:
+- Current directory represented as empty string
+- Leading slashes normalized
+- Path joining handles edge cases
+
+### Storage Limits
+
+Supabase storage limits by plan:
+- Free: 1 GB
+- Pro: 100 GB (additional storage available)
+- Enterprise: Custom
+
+Monitor usage in Supabase Dashboard.
+
+### Performance Optimization
+
+- Use Supabase CDN for global distribution
+- Enable image transformations in bucket settings
+- Configure appropriate CORS policies
+- Use chunk size appropriate for your network
+
+### Metadata and Search
+
+From `/packages/storage-driver-supabase/src/index.ts:108-128`:
+- File metadata available via stat()
+- Search by filename in list operations
+- Metadata stored in PostgreSQL
+
+## Advanced Features
+
+### Image Transformations
+
+Supabase supports URL-based image transformations:
+
+```
+https://{projectId}.supabase.co/storage/v1/render/image/public/bucket/image.jpg?width=300&height=200
+```
+
+Transformation options:
+- Width/height resizing
+- Quality adjustment
+- Format conversion
+
+### Webhooks
+
+Configure PostgreSQL triggers for storage events:
+
+```sql
+-- Example: Log file uploads
+CREATE FUNCTION log_file_upload()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO file_upload_log (object_id, created_at)
+  VALUES (NEW.id, NEW.created_at);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER on_file_upload
+AFTER INSERT ON storage.objects
+FOR EACH ROW EXECUTE FUNCTION log_file_upload();
+```
+
+### Direct PostgreSQL Queries
+
+Query file metadata directly:
+
+```sql
+-- Find large files
+SELECT name, bucket_id, 
+       pg_size_pretty(metadata->>'size'::bigint) as size
+FROM storage.objects
+WHERE bucket_id = 'directus-files'
+  AND (metadata->>'size')::bigint > 10485760
+ORDER BY (metadata->>'size')::bigint DESC;
+```
+
+## Troubleshooting
+
+### Authentication Errors
+
+1. Verify service role key is correct (not anon key)
+2. Check project ID matches your Supabase project
+3. Ensure service role hasn't been rotated
+4. Test with: `curl -H "Authorization: Bearer {key}" {endpoint}/bucket`
+
+### Bucket Not Found
+
+Ensure bucket exists:
+
+```sql
+SELECT * FROM storage.buckets WHERE id = 'directus-files';
+```
+
+Create if missing via dashboard or SQL.
+
+### Upload Failures
+
+1. Check storage quota hasn't been exceeded
+2. Verify file size is within limits
+3. Ensure bucket accepts uploads (not read-only)
+4. Check network connectivity to Supabase
+
+### List Operation Issues
+
+From `/packages/storage-driver-supabase/src/index.ts:169-228`:
+- Empty results may indicate wrong prefix
+- Directory vs file handling (ID null = directory)
+- Search term case sensitivity
+- Pagination limits (1000 items per page)
+
+### Resumable Upload Errors
+
+1. Verify TUS endpoint is accessible
+2. Check upload URL persistence in context
+3. Ensure chunk size is appropriate
+4. Verify metadata is correctly passed
+
+### Self-Hosted Issues
+
+1. Verify endpoint URL includes `/storage/v1`
+2. Check Supabase services are running
+3. Ensure PostgreSQL connection is healthy
+4. Verify Kong gateway configuration
+
+## Self-Hosting Supabase
+
+For self-hosted Supabase:
+
+```bash
+# Docker Compose setup
+git clone --depth 1 https://github.com/supabase/supabase
+cd supabase/docker
+cp .env.example .env
+
+# Configure environment
+# Set POSTGRES_PASSWORD, JWT_SECRET, etc.
+
+# Start services
+docker-compose up -d
+
+# Configure Directus
+STORAGE_SUPABASE_ENDPOINT="http://localhost:8000/storage/v1"
+STORAGE_SUPABASE_SERVICE_ROLE="your-jwt-service-role"
+```
+
+## Related
+
+- [Storage Overview](/storage/overview)
+- [S3 Storage](/storage/s3)
+- [Cloudinary Storage](/storage/cloudinary)

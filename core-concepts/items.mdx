@@ -1,0 +1,441 @@
+---
+title: Items
+description: Items are individual records within collections, representing rows in your database tables that contain the actual content and data.
+---
+
+## What are Items?
+
+Items are the individual pieces of data stored within collections. Each item represents a single row in a database table and contains values for all the fields defined in its parent collection. Items are the core content objects you create, read, update, and delete through the Directus API.
+
+<Note>
+Every item is uniquely identified by its primary key, typically an auto-incrementing integer or UUID.
+</Note>
+
+## Item Structure
+
+An item consists of field-value pairs corresponding to the collection's schema:
+
+```json
+{
+  "id": 1,
+  "title": "Introduction to Directus",
+  "content": "Directus is a powerful headless CMS...",
+  "status": "published",
+  "author": 5,
+  "date_created": "2024-03-01T10:30:00Z",
+  "date_updated": "2024-03-03T15:45:00Z"
+}
+```
+
+## Creating Items
+
+Items are created through the API by providing field values:
+
+```http
+POST /items/articles
+Content-Type: application/json
+
+{
+  "title": "Getting Started with Directus",
+  "content": "This guide will help you...",
+  "status": "draft",
+  "author": 5
+}
+```
+
+From the source code (`~/workspace/source/api/src/services/items.ts:126-169`), the creation process:
+
+1. Validates the payload against permissions
+2. Runs pre-create hooks for modifications
+3. Processes presets from permissions
+4. Handles Many-to-One (M2O) relationships
+5. Handles Any-to-One (A2O) relationships
+6. Inserts the record into the database
+7. Processes One-to-Many (O2M) relationships
+8. Returns the primary key of the new item
+
+### Auto-Generated Fields
+
+Certain fields are automatically populated:
+
+- **Primary Key**: Auto-incremented unless manually specified
+- **`user_created`**: Set to the authenticated user's ID
+- **`date_created`**: Set to current timestamp
+- **Default Values**: Applied from field schema
+
+```typescript
+// From ~/workspace/source/api/src/services/items.ts:223-224
+const primaryKey: undefined | PrimaryKey = payloadWithTypeCasting[primaryKeyField];
+
+if (primaryKey) {
+  validateKeys(this.schema, this.collection, primaryKeyField, primaryKey);
+}
+```
+
+## Reading Items
+
+### Get All Items
+
+```http
+GET /items/articles
+```
+
+Returns a list of all items in the collection (subject to permissions).
+
+### Get Single Item
+
+```http
+GET /items/articles/1
+```
+
+Retrieve a specific item by its primary key.
+
+### Query Parameters
+
+Directus provides powerful query parameters for filtering, sorting, and pagination:
+
+```http
+GET /items/articles?filter[status][_eq]=published&sort=-date_created&limit=10&offset=20
+```
+
+#### Filtering
+
+```json
+{
+  "filter": {
+    "status": { "_eq": "published" },
+    "author": { "_eq": 5 },
+    "date_created": { "_gte": "2024-01-01" }
+  }
+}
+```
+
+#### Field Selection
+
+```http
+GET /items/articles?fields=id,title,author.first_name,author.last_name
+```
+
+Supports nested field selection through relationships using dot notation.
+
+#### Sorting
+
+```http
+GET /items/articles?sort=title,-date_created
+```
+
+Prefix with `-` for descending order.
+
+#### Pagination
+
+```http
+GET /items/articles?limit=25&page=2
+```
+
+Or use offset-based pagination:
+
+```http
+GET /items/articles?limit=25&offset=50
+```
+
+#### Search
+
+```http
+GET /items/articles?search=directus
+```
+
+Searches across all searchable fields in the collection.
+
+## Updating Items
+
+### Update Single Item
+
+```http
+PATCH /items/articles/1
+Content-Type: application/json
+
+{
+  "status": "published",
+  "published_date": "2024-03-03"
+}
+```
+
+### Update Multiple Items
+
+Update multiple items by their IDs:
+
+```http
+PATCH /items/articles
+Content-Type: application/json
+
+{
+  "keys": [1, 2, 3],
+  "data": {
+    "status": "archived"
+  }
+}
+```
+
+Or update by query:
+
+```http
+PATCH /items/articles?filter[status][_eq]=draft
+Content-Type: application/json
+
+{
+  "status": "published"
+}
+```
+
+### Auto-Updated Fields
+
+- **`user_updated`**: Set to the authenticated user's ID
+- **`date_updated`**: Set to current timestamp
+
+## Deleting Items
+
+### Delete Single Item
+
+```http
+DELETE /items/articles/1
+```
+
+### Delete Multiple Items
+
+```http
+DELETE /items/articles?filter[status][_eq]=draft
+```
+
+Or by IDs:
+
+```http
+DELETE /items/articles/1,2,3
+```
+
+<Warning>
+Deleting items is permanent unless you have revisions enabled. Always ensure you have backups before bulk deletions.
+</Warning>
+
+## Item Revisions
+
+When revisions are enabled for a collection, Directus tracks every change to items:
+
+```json
+{
+  "collection": "articles",
+  "meta": {
+    "versioning": true
+  }
+}
+```
+
+Each change creates a revision record in `directus_revisions`:
+
+```json
+{
+  "id": 123,
+  "collection": "articles",
+  "item": "1",
+  "data": { "title": "Updated Title" },
+  "delta": { "title": "Original Title" },
+  "activity": 456
+}
+```
+
+You can revert to previous revisions through the API or app interface.
+
+## Item Activity
+
+When accountability is enabled, all item actions are logged in `directus_activity`:
+
+```json
+{
+  "id": 789,
+  "action": "update",
+  "user": 5,
+  "timestamp": "2024-03-03T15:45:00Z",
+  "collection": "articles",
+  "item": "1",
+  "comment": null
+}
+```
+
+Activities include:
+- `create` - Item creation
+- `update` - Item modification  
+- `delete` - Item deletion
+- `comment` - Comments added to item
+
+## Nested Relational Data
+
+Items can include related data from other collections through field expansion:
+
+```http
+GET /items/articles/1?fields=*,author.*,categories.*
+```
+
+Response includes full related objects:
+
+```json
+{
+  "id": 1,
+  "title": "Introduction to Directus",
+  "author": {
+    "id": 5,
+    "first_name": "John",
+    "last_name": "Doe",
+    "email": "john@example.com"
+  },
+  "categories": [
+    { "id": 10, "name": "Tutorials" },
+    { "id": 12, "name": "Getting Started" }
+  ]
+}
+```
+
+### Deep Nesting
+
+Supports deep nesting of relationships:
+
+```http
+GET /items/articles?fields=*,author.role.*,author.avatar.*
+```
+
+## Creating Items with Relationships
+
+Create related items inline during item creation:
+
+```json
+{
+  "title": "New Article",
+  "author": {
+    "first_name": "Jane",
+    "last_name": "Smith",
+    "email": "jane@example.com"
+  },
+  "categories": [
+    { "categories_id": 10 },
+    { "categories_id": { "name": "New Category" } }
+  ]
+}
+```
+
+From the source code (`~/workspace/source/api/src/services/items.ts:203-216`), relationship processing handles:
+
+1. **M2O (Many-to-One)**: Creates related item first, uses returned ID
+2. **A2O (Any-to-One)**: Similar to M2O with collection specification
+3. **O2M (One-to-Many)**: Creates child items after parent, linking via foreign key
+
+## Batch Operations
+
+Directus supports efficient batch operations:
+
+### Create Multiple Items
+
+```http
+POST /items/articles
+Content-Type: application/json
+
+[
+  { "title": "Article 1", "status": "draft" },
+  { "title": "Article 2", "status": "draft" },
+  { "title": "Article 3", "status": "draft" }
+]
+```
+
+### Update Multiple Items
+
+```http
+PATCH /items/articles
+Content-Type: application/json
+
+[
+  { "id": 1, "status": "published" },
+  { "id": 2, "status": "published" },
+  { "id": 3, "status": "archived" }
+]
+```
+
+<Note>
+Batch mutations have a configurable limit (default 25,000 mutations) to prevent performance issues.
+</Note>
+
+From the source code (`~/workspace/source/api/src/services/items.ts:89-104`):
+
+```typescript
+createMutationTracker(initialCount = 0): MutationTracker {
+  const maxCount = Number(env['MAX_BATCH_MUTATION']);
+  let mutationCount = initialCount;
+  return {
+    trackMutations(count: number) {
+      mutationCount += count;
+      
+      if (mutationCount > maxCount) {
+        throw new InvalidPayloadError({ 
+          reason: `Exceeded max batch mutation limit of ${maxCount}` 
+        });
+      }
+    }
+  };
+}
+```
+
+## Singleton Items
+
+For singleton collections, use a simplified API:
+
+```http
+GET /items/settings
+PATCH /items/settings
+```
+
+No ID needed since only one item exists.
+
+## Common Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Content Publishing" icon="newspaper">
+    Create, edit, and publish blog posts, articles, and pages with draft/published workflows.
+  </Card>
+  
+  <Card title="Product Catalogs" icon="tags">
+    Manage e-commerce products with variants, pricing, inventory, and categorization.
+  </Card>
+  
+  <Card title="User Profiles" icon="user">
+    Store user information, preferences, and settings with custom profile data.
+  </Card>
+  
+  <Card title="Asset Metadata" icon="file">
+    Enrich media files with tags, descriptions, credits, and licensing information.
+  </Card>
+</CardGroup>
+
+## Best Practices
+
+<Tip>
+**Use Transactions**: For complex operations involving multiple items or collections, leverage database transactions for atomicity.
+</Tip>
+
+<Tip>
+**Batch Operations**: When creating or updating multiple items, use batch endpoints instead of individual requests.
+</Tip>
+
+<Tip>
+**Field Selection**: Only request the fields you need to reduce response payload size and improve performance.
+</Tip>
+
+<Tip>
+**Enable Revisions**: For important content collections, enable revisions to track changes and allow rollbacks.
+</Tip>
+
+<Tip>
+**Optimize Queries**: Use filters, limits, and indexes appropriately to ensure fast query performance.
+</Tip>
+
+## Related Concepts
+
+- **[Collections](/core-concepts/collections)** - Tables that contain items
+- **[Fields](/core-concepts/fields)** - Attributes that define item structure
+- **[Relationships](/core-concepts/relationships)** - Links between items in different collections
+- **[Permissions](/core-concepts/permissions)** - Access control for item operations

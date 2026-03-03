@@ -1,0 +1,146 @@
+---
+title: Endpoint Extensions
+description: Create custom API endpoints
+---
+
+Endpoint extensions allow you to add custom API routes to Directus.
+
+## Creating an Endpoint
+
+```bash
+npm init directus-extension
+# Select "endpoint" as the extension type
+```
+
+## Endpoint Structure
+
+```typescript
+import { defineEndpoint } from '@directus/extensions-sdk';
+
+export default defineEndpoint((router, context) => {
+  const { services, getSchema } = context;
+
+  router.get('/', async (req, res) => {
+    res.json({ message: 'Hello from custom endpoint!' });
+  });
+
+  router.get('/items', async (req, res) => {
+    const schema = await getSchema();
+    const itemsService = new services.ItemsService('articles', {
+      schema,
+      accountability: req.accountability,
+    });
+
+    const items = await itemsService.readByQuery({
+      limit: 10,
+    });
+
+    res.json({ data: items });
+  });
+
+  router.post('/process', async (req, res) => {
+    const { data } = req.body;
+    
+    // Process data
+    const result = processData(data);
+    
+    res.json({ result });
+  });
+});
+```
+
+## Router
+
+The router is an Express router. You can use all Express methods:
+
+```typescript
+router.get('/path', handler);
+router.post('/path', handler);
+router.patch('/path', handler);
+router.delete('/path', handler);
+router.use(middleware);
+```
+
+## Request Object
+
+The request object includes:
+
+```typescript
+interface Request {
+  accountability: Accountability | null;
+  body: any;
+  params: Record<string, string>;
+  query: Record<string, string>;
+  headers: Record<string, string>;
+  // ... standard Express request properties
+}
+```
+
+## Using Services
+
+Access Directus services:
+
+```typescript
+const { ItemsService, UsersService, FilesService } = services;
+
+const schema = await getSchema();
+const itemsService = new ItemsService('articles', {
+  schema,
+  accountability: req.accountability,
+});
+
+const items = await itemsService.readByQuery({});
+```
+
+## Authentication
+
+Endpoints respect Directus authentication:
+
+```typescript
+router.get('/protected', async (req, res) => {
+  if (!req.accountability) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  // User is authenticated
+  res.json({ user: req.accountability.user });
+});
+```
+
+## Error Handling
+
+```typescript
+router.get('/item/:id', async (req, res, next) => {
+  try {
+    const schema = await getSchema();
+    const itemsService = new ItemsService('articles', { schema });
+    
+    const item = await itemsService.readOne(req.params.id);
+    res.json({ data: item });
+  } catch (error) {
+    next(error);
+  }
+});
+```
+
+## Accessing External APIs
+
+```typescript
+import axios from 'axios';
+
+router.get('/external', async (req, res) => {
+  const response = await axios.get('https://api.example.com/data');
+  res.json(response.data);
+});
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Hooks" icon="webhook" href="/extensions/hooks">
+    Create server hooks
+  </Card>
+  <Card title="Operations" icon="diagram-project" href="/extensions/operations">
+    Create flow operations
+  </Card>
+</CardGroup>

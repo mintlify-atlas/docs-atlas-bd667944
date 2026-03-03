@@ -1,0 +1,88 @@
+---
+title: Roles
+description: Manage user roles
+---
+
+Roles define groups of users with shared permissions.
+
+## List Roles
+
+```bash
+GET /roles
+```
+
+**Example:**
+
+```bash
+curl "https://your-directus-instance.com/roles" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+## Get Role
+
+```bash
+GET /roles/:id
+```
+
+## Create Role
+
+```bash
+POST /roles
+```
+
+**Request Body:**
+
+```json
+{
+  "name": "Editor",
+  "icon": "supervised_user_circle",
+  "description": "Can edit content",
+  "admin_access": false,
+  "app_access": true
+}
+```
+
+## Update Role
+
+```bash
+PATCH /roles/:id
+```
+
+## Delete Role
+
+```bash
+DELETE /roles/:id
+```
+
+## Role Properties
+
+<ResponseField name="id" type="string">
+  Role UUID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Role name
+</ResponseField>
+
+<ResponseField name="icon" type="string">
+  Material icon name
+</ResponseField>
+
+<ResponseField name="admin_access" type="boolean">
+  Full admin access
+</ResponseField>
+
+<ResponseField name="app_access" type="boolean">
+  Can access the admin app
+</ResponseField>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Users" icon="users" href="/api/rest/users">
+    Manage users
+  </Card>
+  <Card title="Permissions" icon="lock" href="/api/rest/permissions">
+    Configure permissions
+  </Card>
+</CardGroup>

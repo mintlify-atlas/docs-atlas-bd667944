@@ -1,0 +1,116 @@
+---
+title: Hook Extensions
+description: Create server-side event hooks
+---
+
+Hooks allow you to execute custom code in response to Directus events.
+
+## Creating a Hook
+
+```bash
+npm init directus-extension
+# Select "hook" as the extension type
+```
+
+## Hook Structure
+
+```typescript
+import { defineHook } from '@directus/extensions-sdk';
+
+export default defineHook(({ filter, action }, { services, getSchema }) => {
+  // Filter hook - modify data before it's processed
+  filter('items.create', async (input, meta, context) => {
+    if (meta.collection === 'articles') {
+      input.slug = input.title.toLowerCase().replace(/\s+/g, '-');
+    }
+    return input;
+  });
+
+  // Action hook - execute after an action completes
+  action('items.create', async (meta, context) => {
+    if (meta.collection === 'articles') {
+      console.log('Article created:', meta.key);
+    }
+  });
+});
+```
+
+## Event Types
+
+### Item Events
+
+- `items.create`
+- `items.update`
+- `items.delete`
+- `items.promote`
+- `items.sort`
+
+### Authentication Events
+
+- `auth.login`
+- `auth.create`
+- `auth.update`
+
+### Server Events
+
+- `server.start`
+- `server.stop`
+
+### Request Events
+
+- `request`
+- `response`
+
+## Filter Hooks
+
+Modify data before it's processed:
+
+```typescript
+filter('items.create', (input, meta) => {
+  // Modify input
+  input.created_at = new Date();
+  return input;
+});
+```
+
+## Action Hooks
+
+Execute code after an action:
+
+```typescript
+action('items.create', async (meta, context) => {
+  const { ItemsService } = context.services;
+  const schema = await context.getSchema();
+  
+  const itemsService = new ItemsService('logs', { schema });
+  await itemsService.createOne({
+    action: 'create',
+    collection: meta.collection,
+    item: meta.key,
+  });
+});
+```
+
+## Context
+
+Hooks receive context with:
+
+```typescript
+interface Context {
+  services: Services;
+  getSchema: () => Promise<Schema>;
+  database: Knex;
+  accountability: Accountability | null;
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Operations" icon="diagram-project" href="/extensions/operations">
+    Create flow operations
+  </Card>
+  <Card title="Endpoints" icon="code" href="/extensions/endpoints">
+    Create API endpoints
+  </Card>
+</CardGroup>

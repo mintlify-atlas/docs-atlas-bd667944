@@ -1,0 +1,117 @@
+---
+title: Contributing Overview
+description: Learn how to contribute to Directus and get involved with the project
+---
+
+Thank you for your interest in contributing to Directus! This guide will help you get started with contributing to the project, whether you're fixing bugs, adding features, improving documentation, or helping in other ways.
+
+## Ways to Contribute
+
+There are many ways to contribute to Directus:
+
+- **Report Bugs** - Submit detailed bug reports with reproduction steps
+- **Suggest Features** - Propose new features or enhancements
+- **Write Code** - Fix bugs, implement features, or improve performance
+- **Improve Documentation** - Help make our docs clearer and more comprehensive
+- **Review Pull Requests** - Provide feedback on proposed changes
+- **Help Others** - Answer questions in discussions and issues
+
+## Getting Started
+
+Before you start contributing, please:
+
+1. Read through this contributing guide
+2. Check existing [issues](https://github.com/directus/directus/issues) and [pull requests](https://github.com/directus/directus/pulls)
+3. Set up your [development environment](/contributing/development-setup)
+4. Familiarize yourself with the [codebase structure](/contributing/codebase-structure)
+
+## Code of Conduct
+
+We are committed to providing a welcoming and inclusive experience for everyone. Please be respectful and professional in all interactions.
+
+## Development Workflow
+
+The typical workflow for contributing code is:
+
+1. **Fork the repository** - Create your own fork of the Directus repository
+2. **Create a branch** - Make a new branch for your changes
+3. **Make your changes** - Implement your bug fix or feature
+4. **Test thoroughly** - Ensure all tests pass and add new tests as needed
+5. **Create a changeset** - Document your changes for the changelog
+6. **Submit a pull request** - Open a PR following our [PR guidelines](/contributing/pull-requests)
+7. **Address feedback** - Work with maintainers to refine your contribution
+
+## Changesets
+
+All code changes require a changeset to document what changed for the release notes.
+
+### Creating a Changeset
+
+Run the following command:
+
+```bash
+pnpm changeset
+```
+
+This interactive command will:
+
+1. Ask which packages are affected
+2. Ask whether the change is a major, minor, or patch
+3. Prompt for a description of the change
+
+### Changeset Description Format
+
+**IMPORTANT**: All changeset descriptions must be written in **past tense**, as they document changes that have already been made.
+
+Examples:
+
+- ✅ "Added support for multi-provider AI"
+- ✅ "Fixed race condition in WebSocket connections"
+- ✅ "Replaced deprecated `ldapjs` with `ldapts`"
+- ❌ "Add support for multi-provider AI" (present tense - incorrect)
+- ❌ "Adding support for multi-provider AI" (present continuous - incorrect)
+
+### Versioning Guidelines
+
+Follow semantic versioning:
+
+- **Patch** (`0.0.x`) - Bug fixes, dependency updates, internal improvements that don't affect the public API
+  - Example: "Fixed validation error in date field"
+
+- **Minor** (`0.x.0`) - New features, enhancements to existing features, non-breaking changes
+  - Example: "Added visual editing support to live preview"
+
+- **Major** (`x.0.0`) - Breaking changes that require user action or code updates
+  - Example: "Removed deprecated `GET /items` endpoint"
+
+### Breaking Changes
+
+When introducing a breaking change:
+
+1. Use **major** version bump
+2. In the changeset description, clearly document:
+   - What changed (past tense)
+   - Why it changed (if not obvious)
+   - Migration steps or what users need to update
+
+Example breaking change changeset:
+
+```markdown
+---
+'@directus/api': major
+---
+
+Removed support for Node.js 18. Directus now requires Node.js 20 or higher.
+
+**Migration**: Update your Node.js installation to version 20 or higher before upgrading.
+```
+
+## Questions?
+
+If you have questions about contributing, feel free to:
+
+- Open a [discussion](https://github.com/directus/directus/discussions)
+- Ask in the [Directus Discord community](https://directus.chat)
+- Check the [documentation](https://docs.directus.io)
+
+We appreciate your contributions and look forward to working with you!

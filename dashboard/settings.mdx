@@ -1,0 +1,399 @@
+---
+title: "Dashboard Settings"
+description: "Configure your Directus project, data model, permissions, and system settings"
+icon: "gear"
+---
+
+The Settings module provides comprehensive configuration for your Directus project. Access to Settings is restricted to admin users who can manage the data model, permissions, workflows, and project configuration.
+
+<Warning>
+  Settings is only accessible to users with admin privileges. Regular users will not see this module.
+</Warning>
+
+## Settings Overview
+
+The Settings module is organized into several key areas:
+
+<CardGroup cols={2}>
+  <Card title="Data Model" icon="database">
+    Define your collections, fields, and relationships.
+  </Card>
+  
+  <Card title="Roles & Permissions" icon="shield">
+    Control who can access and modify your data.
+  </Card>
+  
+  <Card title="Flows" icon="workflow">
+    Automate tasks with event-driven workflows.
+  </Card>
+  
+  <Card title="Project Settings" icon="sliders">
+    Configure project name, branding, and general settings.
+  </Card>
+</CardGroup>
+
+## Data Model
+
+The data model section lets you design your database structure through the UI.
+
+### Collections
+
+Collections are tables in your database. Manage collections to organize your data:
+
+**Create a collection:**
+<Steps>
+  <Step title="Open Data Model">
+    Navigate to **Settings → Data Model**.
+  </Step>
+  
+  <Step title="Click Create Collection">
+    Click the **+** button to add a new collection.
+  </Step>
+  
+  <Step title="Choose collection type">
+    Select:
+    - **From Scratch** - Start with an empty collection
+    - **From Template** - Use a pre-built collection structure
+  </Step>
+  
+  <Step title="Configure collection">
+    Set:
+    - **Name** - Collection identifier (lowercase, no spaces)
+    - **Primary Key** - Auto-increment ID or UUID
+    - **Note** - Description of the collection
+  </Step>
+</Steps>
+
+**Collection options:**
+- **Icon** - Icon to display in the navigation
+- **Color** - Accent color for the collection
+- **Singleton** - Single item collection (like settings)
+- **Archive** - Enable archiving items instead of deleting
+- **Sort Field** - Field to use for manual sorting
+- **Display Template** - How to display items in relationships
+
+### Fields
+
+Fields are columns in your collections. Each field has a type and interface:
+
+**Add a field:**
+1. Open a collection in Data Model
+2. Click **Create Field**
+3. Choose a field type:
+   - **Standard** - Text, number, date, boolean, etc.
+   - **Relational** - Connect to other collections
+   - **Presentation** - Dividers and notes (no data storage)
+4. Configure field options
+5. Save the field
+
+**Field types:**
+- **String** - Text, email, URL, JSON
+- **Number** - Integer, decimal, float
+- **Date/Time** - Date, time, datetime, timestamp
+- **Boolean** - True/false toggle
+- **JSON** - Structured data
+- **UUID** - Unique identifiers
+
+**Relational fields:**
+- **Many-to-One (M2O)** - Link to a single related item
+- **One-to-Many (O2M)** - Collection of related items
+- **Many-to-Many (M2M)** - Multiple items relate to multiple items
+- **Many-to-Any (M2A)** - Relate to items in different collections
+- **Translations** - Special O2M for multi-language content
+
+### Interfaces
+
+Interfaces control how fields appear in forms:
+
+- **Input** - Basic text input
+- **Dropdown** - Select from predefined options
+- **WYSIWYG** - Rich text editor
+- **Slider** - Numeric slider
+- **Color Picker** - Color selection
+- **File** - Upload and select files
+- **Map** - Geographic location picker
+- **Repeater** - Add multiple values
+- **Translations** - Multi-language input
+
+And 40+ more specialized interfaces.
+
+### Field Configuration
+
+Each field can be configured with:
+
+**Schema:**
+- Data type and constraints
+- Required/optional
+- Default value
+- Unique constraint
+
+**Field:**
+- Display name
+- Note/description
+- Hidden in app
+- Read-only
+
+**Interface:**
+- Interface type
+- Interface options
+- Placeholder text
+- Help text
+
+**Display:**
+- How the field appears in tables
+- Display template
+- Conditional display
+
+**Validation:**
+- Required/optional
+- Regular expression validation
+- Min/max values
+- Custom validation rules
+
+## Roles & Permissions
+
+Control access to your data with roles and permissions.
+
+### Roles
+
+Roles group users with similar access needs:
+
+**Create a role:**
+1. Go to **Settings → Roles**
+2. Click **+** to add a role
+3. Enter:
+   - **Name** - Role identifier
+   - **Description** - What this role is for
+   - **Icon** - Role icon
+4. Configure role settings:
+   - **Admin Access** - Grant full admin privileges
+   - **App Access** - Allow login to the admin app
+   - **Enforce 2FA** - Require two-factor authentication
+   - **IP Access** - Restrict by IP address
+
+**Built-in roles:**
+- **Administrator** - Full access (cannot be edited)
+- **Public** - Unauthenticated users
+
+### Permissions
+
+Permissions define what actions a role can perform on each collection:
+
+**Configure permissions:**
+1. Open a role in Settings → Roles
+2. Click a collection to set permissions
+3. Set CRUD permissions:
+   - **Create** - Add new items
+   - **Read** - View items
+   - **Update** - Edit items
+   - **Delete** - Remove items
+   - **Share** - Share items (if enabled)
+
+**Permission levels:**
+- **All Access** - No restrictions
+- **No Access** - Completely blocked
+- **Use Custom** - Conditional access with filters
+
+**Custom permissions:**
+- **Item Permissions** - Filter which items are accessible
+- **Field Permissions** - Control field-level access (read-only, hidden)
+- **Field Validation** - Required fields, presets
+
+<Tip>
+  Use the `$CURRENT_USER` variable in permission filters to restrict access to items owned by the logged-in user.
+</Tip>
+
+## Policies (RBAC)
+
+Directus supports advanced Role-Based Access Control with Policies:
+
+- **Policies** - Reusable permission sets
+- **Users** - Can have multiple roles and policies
+- **Fine-grained control** - Precise access management
+
+Policies allow more flexible permission models than traditional roles alone.
+
+## Flows
+
+Flows are automated workflows triggered by events in your project.
+
+### Creating Flows
+
+**Set up a flow:**
+<Steps>
+  <Step title="Navigate to Flows">
+    Go to **Settings → Flows**.
+  </Step>
+  
+  <Step title="Create a flow">
+    Click **+** and configure:
+    - **Name** - Flow identifier
+    - **Status** - Active or inactive
+    - **Trigger** - What starts the flow
+  </Step>
+  
+  <Step title="Add operations">
+    Click **+** in the flow canvas to add operations.
+  </Step>
+  
+  <Step title="Connect operations">
+    Drag from one operation to another to create the flow logic.
+  </Step>
+</Steps>
+
+### Triggers
+
+Flows can start from:
+- **Event Hook** - When items are created, updated, or deleted
+- **Webhook** - From external HTTP requests
+- **Manual** - Triggered manually
+- **Schedule** - Run on a cron schedule
+- **Operation** - Called from another flow
+
+### Operations
+
+Operations are the actions in your flow:
+
+- **Condition** - If/then logic branching
+- **Send Email** - Email notifications
+- **Send Notification** - In-app notifications
+- **Create/Update/Delete Items** - Modify data
+- **Run Script** - Execute custom JavaScript
+- **Request URL** - Make HTTP requests
+- **Log to Console** - Debug logging
+- **Sleep** - Add delays
+- **Transform** - Modify data
+
+And more operations available via extensions.
+
+## Project Settings
+
+Configure general project settings:
+
+### General
+
+- **Project Name** - Display name for your project
+- **Project URL** - Public URL of your project
+- **Project Color** - Brand color
+- **Project Logo** - Custom logo
+- **Default Language** - Interface language
+- **Default Theme** - Light, dark, or auto
+
+### Security
+
+- **Auth Providers** - Enable SSO and OAuth
+- **Auth Password Policy** - Password requirements
+- **Auth Token TTL** - Token expiration time
+- **Rate Limiting** - API rate limits
+
+### Files & Storage
+
+- **Storage Adapters** - Configure S3, Azure, GCS, etc.
+- **File Naming** - UUID or original filenames
+- **Image Transformations** - Enable dynamic image processing
+- **Storage Locations** - Multiple storage providers
+
+### Email
+
+- **Email Transport** - SMTP or other email services
+- **From Email** - Default sender address
+- **Email Templates** - Customize notification emails
+
+## Extensions
+
+View and manage installed extensions:
+
+- **Interfaces** - Custom field interfaces
+- **Displays** - Custom field displays
+- **Layouts** - Custom collection layouts
+- **Modules** - Custom modules
+- **Panels** - Custom dashboard panels
+- **Operations** - Custom flow operations
+- **Bundles** - Extension packages
+
+Extensions extend Directus functionality beyond the built-in features.
+
+## Marketplace
+
+Browse and install extensions from the Directus Marketplace:
+
+1. Go to **Settings → Marketplace**
+2. Browse available extensions
+3. Click an extension to view details
+4. Install directly from the marketplace
+
+<Note>
+  Marketplace requires a connection to the Directus extension registry and appropriate server permissions.
+</Note>
+
+## Presets
+
+Manage saved view presets:
+
+- **Collection Presets** - Saved layouts, filters, and bookmarks
+- **User Presets** - Personal view preferences
+- **Role Presets** - Default views for roles
+
+Presets control the default view when users open a collection.
+
+## Translations
+
+Manage custom interface translations:
+
+- Add translations for custom fields and collections
+- Override default translations
+- Support additional languages
+
+## System Logs
+
+View system activity and errors:
+
+- **Activity Logs** - User actions and changes
+- **System Events** - Background tasks and processes
+- **Errors** - System errors and warnings
+
+Logs are useful for debugging and auditing.
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Plan your data model">
+    Design your collections and relationships before building:
+    - Sketch out your data structure
+    - Identify relationships between collections
+    - Consider future growth and scalability
+  </Accordion>
+  
+  <Accordion title="Use descriptive names">
+    Make your data model self-documenting:
+    - Use clear collection names
+    - Add notes to fields and collections
+    - Choose intuitive field names
+  </Accordion>
+  
+  <Accordion title="Apply least privilege">
+    Give users only the permissions they need:
+    - Start with minimal permissions
+    - Add permissions as needed
+    - Regularly audit role permissions
+  </Accordion>
+  
+  <Accordion title="Test before production">
+    Verify changes in a safe environment:
+    - Test permission changes with test users
+    - Verify flows work as expected
+    - Check data model changes don't break existing data
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Content Module" icon="box" href="/dashboard/content-module">
+    Start working with your configured data model.
+  </Card>
+  
+  <Card title="Dashboard Overview" icon="gauge" href="/dashboard/overview">
+    Return to the dashboard overview.
+  </Card>
+</CardGroup>

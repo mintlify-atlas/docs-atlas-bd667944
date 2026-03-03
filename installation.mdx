@@ -1,0 +1,802 @@
+---
+title: Installation Guide
+description: Detailed installation instructions for Directus. Learn how to deploy with Docker, npm, pnpm, and configure for production environments.
+---
+
+# Installation Guide
+
+This guide covers detailed installation instructions for Directus, including Docker deployment, npm/pnpm installation, and production environment configuration.
+
+<Info>
+  **Requirements**: Directus requires Node.js 22 or higher. Check your version with `node -v`
+</Info>
+
+## Installation Methods
+
+Choose the installation method that best fits your needs:
+
+<Tabs>
+  <Tab title="Docker (Recommended)">
+    Docker provides the easiest path to production deployment with all dependencies containerized.
+  </Tab>
+  <Tab title="npm">
+    Install Directus using npm for direct control over the Node.js environment.
+  </Tab>
+  <Tab title="pnpm">
+    Install Directus using pnpm for faster, more efficient package management.
+  </Tab>
+  <Tab title="From Source">
+    Clone and build from source for development or customization.
+  </Tab>
+</Tabs>
+
+## Docker Installation
+
+Docker is the recommended method for production deployments. Directus provides official Docker images.
+
+### Quick Start with Docker
+
+<Steps>
+  <Step title="Pull the Directus Image">
+    ```bash
+    docker pull directus/directus
+    ```
+  </Step>
+
+  <Step title="Run with SQLite (Development)">
+    For quick testing with SQLite:
+
+    ```bash
+    docker run -d \
+      --name directus \
+      -p 8055:8055 \
+      -e KEY="replace-with-random-value" \
+      -e SECRET="replace-with-random-value" \
+      -e ADMIN_EMAIL="admin@example.com" \
+      -e ADMIN_PASSWORD="d1r3ctu5" \
+      -e DB_CLIENT="sqlite3" \
+      -e DB_FILENAME="/directus/database/database.sqlite" \
+      -v directus_data:/directus/database \
+      directus/directus
+    ```
+
+    <Warning>
+      SQLite is great for development but not recommended for production. Use PostgreSQL or MySQL for production deployments.
+    </Warning>
+  </Step>
+</Steps>
+
+### Production Docker Compose Setup
+
+For production, use Docker Compose with PostgreSQL:
+
+<Steps>
+  <Step title="Create docker-compose.yml">
+    Create a `docker-compose.yml` file:
+
+    ```yaml
+    version: '3.8'
+
+    services:
+      directus:
+        image: directus/directus:latest
+        ports:
+          - 8055:8055
+        volumes:
+          - ./uploads:/directus/uploads
+          - ./extensions:/directus/extensions
+        environment:
+          KEY: 'replace-with-random-value'
+          SECRET: 'replace-with-random-value'
+
+          DB_CLIENT: 'pg'
+          DB_HOST: 'postgres'
+          DB_PORT: '5432'
+          DB_DATABASE: 'directus'
+          DB_USER: 'directus'
+          DB_PASSWORD: 'directus'
+
+          CACHE_ENABLED: 'true'
+          CACHE_STORE: 'redis'
+          REDIS_HOST: 'redis'
+          REDIS_PORT: '6379'
+
+          ADMIN_EMAIL: 'admin@example.com'
+          ADMIN_PASSWORD: 'd1r3ctu5'
+
+          PUBLIC_URL: 'https://yourdomain.com'
+
+        depends_on:
+          - postgres
+          - redis
+
+      postgres:
+        image: postgis/postgis:13-3.4-alpine
+        environment:
+          POSTGRES_DB: 'directus'
+          POSTGRES_USER: 'directus'
+          POSTGRES_PASSWORD: 'directus'
+        volumes:
+          - postgres_data:/var/lib/postgresql/data
+
+      redis:
+        image: redis:6-alpine
+        volumes:
+          - redis_data:/data
+
+    volumes:
+      postgres_data:
+      redis_data:
+    ```
+
+    <Warning>
+      **Security**: Replace `KEY`, `SECRET`, and all passwords with strong, random values before deploying to production!
+    </Warning>
+  </Step>
+
+  <Step title="Generate Secure Keys">
+    Generate secure random values for `KEY` and `SECRET`:
+
+    ```bash
+    # Generate KEY (must be exactly 32 characters)
+    openssl rand -base64 32
+
+    # Generate SECRET (can be any length)
+    openssl rand -base64 64
+    ```
+
+    Update your `docker-compose.yml` with these values.
+  </Step>
+
+  <Step title="Start the Services">
+    ```bash
+    docker compose up -d
+    ```
+
+    This will:
+    - Start PostgreSQL database
+    - Start Redis cache
+    - Start Directus
+    - Bootstrap the database on first run
+  </Step>
+
+  <Step title="Verify Installation">
+    Check that all services are running:
+
+    ```bash
+    docker compose ps
+    ```
+
+    Access Directus at `http://localhost:8055`
+  </Step>
+</Steps>
+
+### Dockerfile Reference
+
+The official Directus Dockerfile uses a multi-stage build:
+
+```dockerfile
+ARG NODE_VERSION=22
+
+# Build stage
+FROM node:${NODE_VERSION}-alpine AS builder
+
+RUN npm install --global corepack@latest
+RUN apk --no-cache add python3 py3-setuptools build-base
+
+WORKDIR /directus
+
+COPY package.json .
+RUN corepack enable && corepack prepare
+
+RUN chown node:node .
+USER node
+
+ENV NODE_OPTIONS=--max-old-space-size=8192
+
+COPY pnpm-lock.yaml .
+RUN pnpm fetch
+
+COPY --chown=node:node . .
+RUN pnpm install --recursive --offline --frozen-lockfile
+RUN npm_config_workspace_concurrency=2 pnpm run build
+RUN pnpm --filter directus deploy --legacy --prod dist
+
+# Runtime stage
+FROM node:${NODE_VERSION}-alpine AS runtime
+
+RUN npm install --global pm2@5 corepack@latest
+
+USER node
+WORKDIR /directus
+
+ENV DB_CLIENT="sqlite3" \
+    DB_FILENAME="/directus/database/database.sqlite" \
+    NODE_ENV="production" \
+    NPM_CONFIG_UPDATE_NOTIFIER="false"
+
+COPY --from=builder --chown=node:node /directus/ecosystem.config.cjs .
+COPY --from=builder --chown=node:node /directus/dist .
+
+EXPOSE 8055
+
+CMD node cli.js bootstrap && pm2-runtime start ecosystem.config.cjs
+```
+
+## npm/pnpm Installation
+
+### Install via npm
+
+<Steps>
+  <Step title="Install Directus Globally">
+    ```bash
+    npm install -g directus
+    ```
+  </Step>
+
+  <Step title="Create a New Project">
+    ```bash
+    directus init my-project
+    cd my-project
+    ```
+  </Step>
+
+  <Step title="Install Database Driver">
+    Install the appropriate database driver:
+
+    <CodeGroup>
+      ```bash PostgreSQL
+      npm install pg
+      ```
+
+      ```bash MySQL/MariaDB
+      npm install mysql2
+      ```
+
+      ```bash MS SQL Server
+      npm install tedious
+      ```
+
+      ```bash Oracle
+      npm install oracledb
+      ```
+
+      ```bash SQLite (included by default)
+      npm install sqlite3
+      ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Configure Environment">
+    Edit the `.env` file created during `init`. See [Environment Configuration](#environment-configuration) below.
+  </Step>
+
+  <Step title="Bootstrap and Start">
+    ```bash
+    # Initialize the database
+    npx directus bootstrap
+
+    # Start the server
+    npx directus start
+    ```
+  </Step>
+</Steps>
+
+### Install via pnpm
+
+<Steps>
+  <Step title="Install Directus Globally">
+    ```bash
+    pnpm install -g directus
+    ```
+  </Step>
+
+  <Step title="Create and Setup Project">
+    ```bash
+    directus init my-project
+    cd my-project
+    ```
+  </Step>
+
+  <Step title="Install Database Driver">
+    ```bash
+    # For PostgreSQL
+    pnpm install pg
+
+    # For MySQL/MariaDB
+    pnpm install mysql2
+    ```
+  </Step>
+
+  <Step title="Bootstrap and Start">
+    ```bash
+    pnpm directus bootstrap
+    pnpm directus start
+    ```
+  </Step>
+</Steps>
+
+## Install from Source
+
+For development or if you want to customize Directus:
+
+<Steps>
+  <Step title="Clone the Repository">
+    ```bash
+    git clone https://github.com/directus/directus.git
+    cd directus
+    ```
+  </Step>
+
+  <Step title="Install Dependencies">
+    Directus uses pnpm for package management:
+
+    ```bash
+    # Enable corepack (comes with Node.js 22)
+    corepack enable
+
+    # Install dependencies
+    pnpm install
+    ```
+  </Step>
+
+  <Step title="Build All Packages">
+    ```bash
+    # Build all packages
+    pnpm build
+
+    # Or build specific package
+    pnpm --filter @directus/api build
+    ```
+  </Step>
+
+  <Step title="Run Development Server">
+    ```bash
+    # API with hot reload on port 8055
+    cd api && pnpm dev
+
+    # App with Vite HMR on port 8080
+    cd app && pnpm dev
+    ```
+  </Step>
+</Steps>
+
+## Environment Configuration
+
+Directus is configured via environment variables. Here are the essential configurations:
+
+### Core Configuration
+
+<CodeGroup>
+  ```bash General
+  # Server Configuration
+  HOST="0.0.0.0"                    # Default: 0.0.0.0
+  PORT=8055                          # Default: 8055
+  PUBLIC_URL="https://yourdomain.com" # Your public-facing URL
+
+  # Security (REQUIRED)
+  KEY="your-secret-key-32-chars"     # Exactly 32 characters
+  SECRET="your-secret-phrase"        # Any length
+
+  # Limits
+  MAX_PAYLOAD_SIZE="1mb"             # Default: 1mb
+  MAX_RELATIONAL_DEPTH=10            # Default: 10
+  QUERY_LIMIT_DEFAULT=100            # Default: 100
+  MAX_BATCH_MUTATION="Infinity"      # Default: Infinity
+  ```
+
+  ```bash Database - PostgreSQL
+  DB_CLIENT="pg"
+  DB_HOST="localhost"
+  DB_PORT=5432
+  DB_DATABASE="directus"
+  DB_USER="directus"
+  DB_PASSWORD="directus"
+  DB_SSL="false"                     # Set to "true" for SSL
+  ```
+
+  ```bash Database - MySQL
+  DB_CLIENT="mysql2"
+  DB_HOST="localhost"
+  DB_PORT=3306
+  DB_DATABASE="directus"
+  DB_USER="directus"
+  DB_PASSWORD="directus"
+  ```
+
+  ```bash Database - SQLite
+  DB_CLIENT="sqlite3"
+  DB_FILENAME="./data.db"
+  ```
+
+  ```bash Database - MS SQL Server
+  DB_CLIENT="mssql"
+  DB_HOST="localhost"
+  DB_PORT=1433
+  DB_DATABASE="directus"
+  DB_USER="sa"
+  DB_PASSWORD="Test@123"
+  ```
+</CodeGroup>
+
+### Caching with Redis
+
+<CodeGroup>
+  ```bash Redis Cache
+  CACHE_ENABLED="true"
+  CACHE_STORE="redis"
+  CACHE_TTL="30m"                   # Cache time-to-live
+  CACHE_NAMESPACE="directus-cache"
+
+  REDIS_HOST="localhost"
+  REDIS_PORT=6379
+  # REDIS_PASSWORD="redis-password"  # If password protected
+  ```
+
+  ```bash Memory Cache (Development)
+  CACHE_ENABLED="true"
+  CACHE_STORE="memory"
+  CACHE_TTL="30m"
+  ```
+</CodeGroup>
+
+### Storage Configuration
+
+<CodeGroup>
+  ```bash Local Storage (Default)
+  STORAGE_LOCATIONS="local"
+  STORAGE_LOCAL_DRIVER="local"
+  STORAGE_LOCAL_ROOT="./uploads"
+  ```
+
+  ```bash AWS S3
+  STORAGE_LOCATIONS="s3"
+  STORAGE_S3_DRIVER="s3"
+  STORAGE_S3_KEY="your-access-key-id"
+  STORAGE_S3_SECRET="your-secret-access-key"
+  STORAGE_S3_BUCKET="your-bucket-name"
+  STORAGE_S3_REGION="us-east-1"
+  ```
+
+  ```bash Azure Blob Storage
+  STORAGE_LOCATIONS="azure"
+  STORAGE_AZURE_DRIVER="azure"
+  STORAGE_AZURE_CONTAINER_NAME="your-container"
+  STORAGE_AZURE_ACCOUNT_NAME="your-account-name"
+  STORAGE_AZURE_ACCOUNT_KEY="your-account-key"
+  ```
+
+  ```bash Google Cloud Storage
+  STORAGE_LOCATIONS="gcs"
+  STORAGE_GCS_DRIVER="gcs"
+  STORAGE_GCS_BUCKET="your-bucket-name"
+  STORAGE_GCS_KEY_FILENAME="./path/to/keyfile.json"
+  ```
+
+  ```bash Cloudinary
+  STORAGE_LOCATIONS="cloudinary"
+  STORAGE_CLOUDINARY_DRIVER="cloudinary"
+  STORAGE_CLOUDINARY_CLOUD_NAME="your-cloud-name"
+  STORAGE_CLOUDINARY_API_KEY="your-api-key"
+  STORAGE_CLOUDINARY_API_SECRET="your-api-secret"
+  ```
+</CodeGroup>
+
+### Rate Limiting
+
+<CodeGroup>
+  ```bash Global Rate Limiting
+  RATE_LIMITER_ENABLED="true"
+  RATE_LIMITER_POINTS=50             # Requests per duration
+  RATE_LIMITER_DURATION=1            # Duration in seconds
+  RATE_LIMITER_STORE="memory"        # Or "redis"
+
+  # Global rate limiter (all requests)
+  RATE_LIMITER_GLOBAL_ENABLED="true"
+  RATE_LIMITER_GLOBAL_POINTS=1000
+  RATE_LIMITER_GLOBAL_DURATION=1
+  ```
+
+  ```bash Specific Rate Limits
+  # Registration rate limiting
+  RATE_LIMITER_REGISTRATION_ENABLED="true"
+  RATE_LIMITER_REGISTRATION_POINTS=5
+  RATE_LIMITER_REGISTRATION_DURATION=60
+
+  # Email rate limiting
+  RATE_LIMITER_EMAIL_ENABLED="true"
+  RATE_LIMITER_EMAIL_POINTS=60
+  RATE_LIMITER_EMAIL_DURATION=60
+  ```
+</CodeGroup>
+
+### Authentication & Security
+
+<CodeGroup>
+  ```bash Token Configuration
+  ACCESS_TOKEN_TTL="15m"             # Default: 15 minutes
+  REFRESH_TOKEN_TTL="7d"             # Default: 7 days
+  REFRESH_TOKEN_COOKIE_SECURE="true" # Set true in production
+  REFRESH_TOKEN_COOKIE_SAME_SITE="lax"
+
+  SESSION_COOKIE_TTL="1d"
+  SESSION_COOKIE_SECURE="true"
+  SESSION_COOKIE_SAME_SITE="lax"
+
+  LOGIN_STALL_TIME=500               # Delay in ms (security)
+  ```
+
+  ```bash CORS Configuration
+  CORS_ENABLED="true"
+  CORS_ORIGIN="true"                 # Or specific origin: https://yourapp.com
+  CORS_METHODS="GET,POST,PATCH,DELETE"
+  CORS_ALLOWED_HEADERS="Content-Type,Authorization"
+  CORS_EXPOSED_HEADERS="Content-Range"
+  CORS_CREDENTIALS="true"
+  ```
+</CodeGroup>
+
+### Email Configuration
+
+<CodeGroup>
+  ```bash SMTP
+  EMAIL_FROM="noreply@yourdomain.com"
+  EMAIL_TRANSPORT="smtp"
+  EMAIL_SMTP_HOST="smtp.gmail.com"
+  EMAIL_SMTP_PORT=587
+  EMAIL_SMTP_USER="your-email@gmail.com"
+  EMAIL_SMTP_PASSWORD="your-password"
+  EMAIL_SMTP_SECURE="false"          # Use TLS
+  ```
+
+  ```bash Sendmail (Default)
+  EMAIL_FROM="noreply@yourdomain.com"
+  EMAIL_TRANSPORT="sendmail"
+  EMAIL_SENDMAIL_PATH="/usr/sbin/sendmail"
+  ```
+
+  ```bash AWS SES
+  EMAIL_FROM="noreply@yourdomain.com"
+  EMAIL_TRANSPORT="ses"
+  EMAIL_SES_CREDENTIALS__ACCESS_KEY_ID="your-access-key"
+  EMAIL_SES_CREDENTIALS__SECRET_ACCESS_KEY="your-secret-key"
+  EMAIL_SES_REGION="us-east-1"
+  ```
+</CodeGroup>
+
+## Production Deployment
+
+### Using PM2 for Process Management
+
+Directus includes PM2 configuration for production deployments:
+
+```bash
+# Install PM2 globally
+npm install -g pm2
+
+# Start Directus with PM2
+pm2 start ecosystem.config.cjs
+
+# View logs
+pm2 logs directus
+
+# Monitor
+pm2 monit
+
+# Restart
+pm2 restart directus
+
+# Stop
+pm2 stop directus
+
+# Save PM2 configuration
+pm2 save
+
+# Set PM2 to start on boot
+pm2 startup
+```
+
+### Nginx Reverse Proxy
+
+Example Nginx configuration:
+
+```nginx
+server {
+    listen 80;
+    server_name yourdomain.com;
+
+    # Redirect HTTP to HTTPS
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name yourdomain.com;
+
+    ssl_certificate /path/to/certificate.crt;
+    ssl_certificate_key /path/to/private.key;
+
+    client_max_body_size 100M;
+
+    location / {
+        proxy_pass http://localhost:8055;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
+
+### Production Checklist
+
+Before deploying to production:
+
+<AccordionGroup>
+  <Accordion title="Database" icon="database">
+    - [ ] Use PostgreSQL or MySQL (not SQLite)
+    - [ ] Set up automated backups
+    - [ ] Configure connection pooling
+    - [ ] Enable SSL for database connections
+    - [ ] Exclude system tables: `DB_EXCLUDE_TABLES="spatial_ref_sys,sysdiagrams"`
+  </Accordion>
+
+  <Accordion title="Security" icon="shield">
+    - [ ] Generate strong `KEY` (32 characters) and `SECRET`
+    - [ ] Set `REFRESH_TOKEN_COOKIE_SECURE="true"`
+    - [ ] Set `SESSION_COOKIE_SECURE="true"`
+    - [ ] Configure `PUBLIC_URL` to your domain
+    - [ ] Enable and configure CORS appropriately
+    - [ ] Set up rate limiting with Redis
+    - [ ] Review and configure `CORS_ORIGIN`
+  </Accordion>
+
+  <Accordion title="Performance" icon="gauge">
+    - [ ] Enable Redis caching: `CACHE_ENABLED="true"`
+    - [ ] Configure rate limiting with Redis store
+    - [ ] Set appropriate cache TTL values
+    - [ ] Use CDN for assets
+    - [ ] Configure `MAX_PAYLOAD_SIZE` based on needs
+  </Accordion>
+
+  <Accordion title="Storage" icon="hard-drive">
+    - [ ] Configure cloud storage (S3, Azure, GCS)
+    - [ ] Set up CDN for file delivery
+    - [ ] Configure appropriate file upload limits
+    - [ ] Enable server-side encryption if required
+  </Accordion>
+
+  <Accordion title="Email" icon="envelope">
+    - [ ] Configure email transport (SMTP, SES, etc.)
+    - [ ] Set `EMAIL_FROM` to valid sender address
+    - [ ] Test password reset emails
+    - [ ] Configure email rate limiting
+  </Accordion>
+
+  <Accordion title="Monitoring" icon="chart-line">
+    - [ ] Enable logging: Configure Pino log levels
+    - [ ] Set up health check endpoint: `/server/ping`
+    - [ ] Monitor with PM2 or Docker health checks
+    - [ ] Set up error tracking (Sentry, etc.)
+    - [ ] Configure metrics export if needed
+  </Accordion>
+
+  <Accordion title="SSL/TLS" icon="lock">
+    - [ ] Configure SSL certificates
+    - [ ] Use reverse proxy (Nginx, Caddy, etc.)
+    - [ ] Force HTTPS redirects
+    - [ ] Enable HSTS headers
+  </Accordion>
+</AccordionGroup>
+
+## Database Migration
+
+When updating Directus versions, migrations may be required:
+
+```bash
+# Check migration status
+directus database migrate:latest
+
+# Run migrations one at a time
+directus database migrate:up
+
+# Rollback one migration
+directus database migrate:down
+```
+
+<Warning>
+  Always backup your database before running migrations!
+</Warning>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Database connection errors">
+    **Symptoms**: Error connecting to database
+
+    **Solutions**:
+    - Verify database is running
+    - Check `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USER`, `DB_PASSWORD`
+    - Ensure database driver is installed (`pg`, `mysql2`, etc.)
+    - Check network connectivity
+    - For PostgreSQL, try: `DB_SSL="false"` if SSL is not configured
+  </Accordion>
+
+  <Accordion title="Port already in use">
+    **Symptoms**: `Error: listen EADDRINUSE: address already in use :::8055`
+
+    **Solutions**:
+    - Change port: `PORT=3000` in `.env`
+    - Find and kill process using port 8055:
+      ```bash
+      lsof -ti:8055 | xargs kill -9
+      ```
+  </Accordion>
+
+  <Accordion title="KEY or SECRET not set">
+    **Symptoms**: `Error: KEY environment variable is required`
+
+    **Solutions**:
+    - Generate keys:
+      ```bash
+      directus security key:generate
+      directus security secret:generate
+      ```
+    - Add to `.env` file
+  </Accordion>
+
+  <Accordion title="File upload errors">
+    **Symptoms**: Files fail to upload or save
+
+    **Solutions**:
+    - Check `STORAGE_LOCAL_ROOT` directory exists and is writable
+    - Increase `MAX_PAYLOAD_SIZE` if files are large
+    - Verify disk space
+    - Check file permissions on upload directory
+  </Accordion>
+
+  <Accordion title="Docker container won't start">
+    **Symptoms**: Container exits immediately
+
+    **Solutions**:
+    - Check logs: `docker logs directus`
+    - Verify all required environment variables are set
+    - Ensure database is ready before Directus starts (use `depends_on`)
+    - Check volume mounts are correct
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configure Data Model" icon="table">
+    Set up your collections, fields, and relationships
+  </Card>
+  <Card title="Authentication Setup" icon="lock">
+    Configure OAuth, LDAP, SAML, or other auth providers
+  </Card>
+  <Card title="API Documentation" icon="code" href="/api/rest">
+    Learn about REST and GraphQL endpoints
+  </Card>
+  <Card title="Extensions" icon="puzzle-piece">
+    Extend Directus with custom interfaces and endpoints
+  </Card>
+  <Card title="Webhooks & Flows" icon="webhook">
+    Automate workflows and integrate with external services
+  </Card>
+  <Card title="User Management" icon="users">
+    Set up roles, permissions, and user accounts
+  </Card>
+</CardGroup>
+
+## Additional Resources
+
+- [Official Documentation](https://docs.directus.io)
+- [GitHub Repository](https://github.com/directus/directus)
+- [Community Forum](https://community.directus.io)
+- [Discord Community](https://directus.chat)
+- [Docker Hub](https://hub.docker.com/r/directus/directus)

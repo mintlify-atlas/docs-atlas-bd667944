@@ -1,0 +1,228 @@
+---
+title: "Content Module"
+description: "Browse, create, edit, and manage items across all your data collections"
+icon: "box"
+---
+
+The Content module is where you work with your data on a day-to-day basis. It provides tools to browse, create, edit, and delete items in your collections.
+
+## Accessing the Content Module
+
+Click the **Content** icon in the sidebar navigation to access the Content module. The sidebar will expand to show all collections you have permission to view.
+
+<Tip>
+  The Content module automatically opens to the last collection you accessed.
+</Tip>
+
+## Collections Sidebar
+
+The left sidebar displays your collections in a hierarchical structure:
+
+- **Root Collections** - Top-level collections appear at the root
+- **Grouped Collections** - Collections can be organized into folders for better organization
+- **System Collections** - Special collections like Users, Files, and Activity logs
+
+### Navigating Collections
+
+1. Click a collection name to view its items
+2. Click the arrow icon to expand/collapse collection groups
+3. Use the search at the top to filter collections by name
+
+## Viewing Items
+
+When you select a collection, the main area displays items in your chosen layout:
+
+### Layout Options
+
+Directus provides multiple layouts to view your data:
+
+- **Table Layout** - Spreadsheet-style view with columns and rows
+- **Cards Layout** - Grid of cards showing item previews
+- **Calendar Layout** - Items displayed on a calendar (requires date field)
+- **Map Layout** - Items plotted on a map (requires location field)
+- **Kanban Layout** - Organize items in columns by status
+
+<Note>
+  Available layouts depend on your collection's fields and configuration.
+</Note>
+
+### Filtering and Sorting
+
+Use the filter tools to find specific items:
+
+**Filter by fields:**
+1. Click the filter icon in the header
+2. Select a field to filter by
+3. Choose an operator (equals, contains, greater than, etc.)
+4. Enter the filter value
+5. Add multiple filters with AND/OR logic
+
+**Sort items:**
+- Click any column header to sort ascending/descending
+- Hold Shift and click multiple columns for multi-column sorting
+
+**Search:**
+- Use the search box to find items by text content
+- Search looks across all text fields in the collection
+
+### Bookmarks
+
+Save your favorite filter and sort combinations as bookmarks:
+
+1. Apply your desired filters and sorting
+2. Click the bookmark icon
+3. Name your bookmark
+4. Access saved bookmarks from the bookmark dropdown
+
+<Tip>
+  Bookmarks are personal and only visible to you.
+</Tip>
+
+## Creating Items
+
+To create a new item in a collection:
+
+<Steps>
+  <Step title="Click the Create button">
+    Click the **+** button in the top right of the collection view.
+  </Step>
+  
+  <Step title="Fill out the form">
+    Enter values for the required fields (marked with an asterisk).
+  </Step>
+  
+  <Step title="Save the item">
+    Click **Save** in the top right to create the item.
+  </Step>
+</Steps>
+
+### Form Features
+
+- **Required fields** are marked with a red asterisk
+- **Field validation** shows errors if you enter invalid data
+- **Conditional fields** appear/disappear based on other field values
+- **Translations** tab appears for collections with translation support
+- **Revisions** tab shows the item's edit history
+
+## Editing Items
+
+To edit an existing item:
+
+1. Click the item in the collection view
+2. The item detail form opens
+3. Make your changes
+4. Click **Save** to update the item
+
+<Warning>
+  Changes are not saved until you click the **Save** button. Navigating away will discard unsaved changes.
+</Warning>
+
+### Item Options
+
+Click the menu icon (three dots) in the item header for additional actions:
+
+- **Duplicate** - Create a copy of the item
+- **Archive** - Move item to archived state
+- **Delete** - Permanently remove the item
+- **Revisions** - View and restore previous versions
+- **Comments** - Add notes and collaborate with team members
+
+## Batch Operations
+
+Work with multiple items at once:
+
+1. Select items using the checkboxes in table view
+2. Batch action buttons appear in the header
+3. Choose an action:
+   - **Edit** - Update a field across all selected items
+   - **Archive** - Archive all selected items
+   - **Delete** - Delete all selected items
+   - **Export** - Export selected items to JSON or CSV
+
+<Note>
+  Batch operations require appropriate permissions for each action.
+</Note>
+
+## Archive and Restore
+
+Archiving items removes them from the default view without deleting them:
+
+**Archive an item:**
+- Open the item and click **Archive** from the menu
+
+**View archived items:**
+- Click the filter icon and select "Show archived items"
+- Or use the URL parameter `?archived`
+
+**Restore archived items:**
+- View archived items
+- Open the item and click **Restore**
+
+## Live Preview
+
+For collections configured with live preview:
+
+1. Open an item for editing
+2. Click the **Preview** button in the header
+3. See a real-time preview of how the item appears on your website
+4. Changes update the preview instantly as you edit
+
+<Tip>
+  Live preview requires configuration by your administrator in collection settings.
+</Tip>
+
+## Import and Export
+
+Manage data in bulk using import/export features:
+
+### Exporting Items
+
+1. Select items or export all from a collection
+2. Click **Export**
+3. Choose format (JSON or CSV)
+4. Download the file
+
+### Importing Items
+
+1. Open the collection
+2. Click the sidebar detail panel
+3. Select **Import**
+4. Upload a JSON or CSV file
+5. Map fields if needed
+6. Review and confirm the import
+
+<Warning>
+  Imports can create or update large numbers of items. Review carefully before confirming.
+</Warning>
+
+## Relational Fields
+
+When working with related items:
+
+### Many-to-One (M2O)
+- Select an existing related item from a dropdown
+- Click **+** to create a new related item
+- Click the item to edit it
+
+### One-to-Many (O2M)
+- View related items in a list within the form
+- Click **+** to add related items
+- Drag to reorder related items
+- Click **×** to remove relationships
+
+### Many-to-Many (M2M)
+- Select multiple related items
+- Create new related items on the fly
+- Remove relationships without deleting items
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Insights & Analytics" icon="chart-line" href="/dashboard/insights">
+    Visualize your content data with custom dashboards.
+  </Card>
+  
+  <Card title="Dashboard Settings" icon="gear" href="/dashboard/settings">
+    Learn about configuring collections and permissions.
+  </Card>
+</CardGroup>
