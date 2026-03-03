@@ -1,0 +1,208 @@
+{
+  "projectType": "saas",
+  "projectName": "Directus",
+  "projectDescription": "A real-time API and headless CMS for managing SQL database content with a powerful admin dashboard.",
+  "theme": "palm",
+  "primaryColor": "#6644FF",
+  "lightColor": "#A890FE",
+  "darkColor": "#4527E6",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "core-concepts/collections",
+              "core-concepts/fields",
+              "core-concepts/items",
+              "core-concepts/relationships",
+              "core-concepts/permissions",
+              "core-concepts/users-roles"
+            ]
+          },
+          {
+            "group": "Features",
+            "pages": [
+              "features/data-model",
+              "features/content-management",
+              "features/file-storage",
+              "features/authentication",
+              "features/flows-automation",
+              "features/real-time",
+              "features/ai-integration",
+              "features/webhooks"
+            ]
+          },
+          {
+            "group": "Admin Dashboard",
+            "pages": [
+              "dashboard/overview",
+              "dashboard/content-module",
+              "dashboard/insights",
+              "dashboard/settings"
+            ]
+          },
+          {
+            "group": "Deployment",
+            "pages": [
+              "deployment/cloud",
+              "deployment/self-hosted",
+              "deployment/docker",
+              "deployment/configuration"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "REST API",
+            "pages": [
+              "api/rest/overview",
+              "api/rest/authentication",
+              "api/rest/items",
+              "api/rest/collections",
+              "api/rest/fields",
+              "api/rest/files",
+              "api/rest/folders",
+              "api/rest/users",
+              "api/rest/roles",
+              "api/rest/permissions",
+              "api/rest/activity",
+              "api/rest/flows",
+              "api/rest/operations"
+            ]
+          },
+          {
+            "group": "GraphQL",
+            "pages": [
+              "api/graphql/overview",
+              "api/graphql/queries",
+              "api/graphql/mutations",
+              "api/graphql/subscriptions"
+            ]
+          },
+          {
+            "group": "SDK",
+            "pages": [
+              "api/sdk/installation",
+              "api/sdk/authentication",
+              "api/sdk/items",
+              "api/sdk/collections",
+              "api/sdk/files",
+              "api/sdk/users",
+              "api/sdk/real-time"
+            ]
+          },
+          {
+            "group": "WebSocket",
+            "pages": [
+              "api/websocket/overview",
+              "api/websocket/subscriptions"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Development",
+        "groups": [
+          {
+            "group": "Extensions",
+            "pages": [
+              "extensions/overview",
+              "extensions/interfaces",
+              "extensions/layouts",
+              "extensions/displays",
+              "extensions/panels",
+              "extensions/modules",
+              "extensions/operations",
+              "extensions/hooks",
+              "extensions/endpoints"
+            ]
+          },
+          {
+            "group": "Database",
+            "pages": [
+              "database/supported-databases",
+              "database/schema-management",
+              "database/migrations"
+            ]
+          },
+          {
+            "group": "Storage",
+            "pages": [
+              "storage/overview",
+              "storage/local",
+              "storage/s3",
+              "storage/azure",
+              "storage/gcs",
+              "storage/cloudinary",
+              "storage/supabase"
+            ]
+          },
+          {
+            "group": "Contributing",
+            "pages": [
+              "contributing/overview",
+              "contributing/development-setup",
+              "contributing/codebase-structure",
+              "contributing/pull-requests"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Real-time REST & GraphQL APIs",
+    "Multi-database support (PostgreSQL, MySQL, SQLite, etc.)",
+    "No-code admin dashboard with Vue.js",
+    "Dynamic file transformations and asset management",
+    "Flexible authentication (Local, OAuth, SAML, LDAP)",
+    "Granular role-based permissions",
+    "Flow automation and webhooks",
+    "WebSocket real-time subscriptions",
+    "Extensible architecture (interfaces, layouts, modules, operations)",
+    "Cloud hosting and self-hosted options",
+    "TypeScript SDK for developers",
+    "AI integration capabilities"
+  ],
+  "publicApiSurface": [
+    "GET /items/:collection",
+    "POST /items/:collection",
+    "PATCH /items/:collection/:id",
+    "DELETE /items/:collection/:id",
+    "POST /auth/login",
+    "POST /auth/refresh",
+    "GET /collections",
+    "GET /fields/:collection",
+    "GET /files",
+    "POST /files",
+    "GET /users",
+    "POST /users",
+    "GET /roles",
+    "GET /permissions",
+    "GET /activity",
+    "POST /flows/trigger/:id",
+    "GraphQL endpoint: /graphql",
+    "WebSocket endpoint: /websocket",
+    "@directus/sdk - createDirectus()",
+    "@directus/sdk - rest()",
+    "@directus/sdk - graphql()",
+    "@directus/sdk - realtime()",
+    "CLI: directus bootstrap",
+    "CLI: directus schema apply",
+    "CLI: directus database install"
+  ]
+}
